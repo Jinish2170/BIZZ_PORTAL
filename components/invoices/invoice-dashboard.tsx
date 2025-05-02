@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Plus, Download, DollarSign, Clock, CheckCircle2, AlertCircle, FileText, Printer, Mail } from "lucide-react"
+import { Plus, Download, DollarSign, Clock, CheckCircle2, AlertCircle, FileText, Printer, Mail, Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { DataTable } from "@/components/data-table"
@@ -18,7 +18,11 @@ import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useStore, type Invoice } from "@/lib/store"
 
-export function InvoiceDashboard() {
+interface InvoiceDashboardProps {
+  onInvoiceSelect?: (invoiceId: string) => void;
+}
+
+export function InvoiceDashboard({ onInvoiceSelect }: InvoiceDashboardProps) {
   const { toast } = useToast()
   const { invoices, addInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } = useStore()
 
@@ -135,6 +139,22 @@ export function InvoiceDashboard() {
               <FileText className="h-4 w-4" />
               <span className="sr-only">View</span>
             </Button>
+            {onInvoiceSelect && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  onInvoiceSelect(invoice.id);
+                  toast({
+                    title: "Invoice selected",
+                    description: `Selected invoice ${invoice.invoiceNumber} for document upload`,
+                  });
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                <span className="sr-only">Upload Document</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
