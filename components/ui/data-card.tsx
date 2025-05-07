@@ -1,5 +1,5 @@
 import type React from "react"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -58,4 +58,15 @@ export function DataCard({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon && <div className="h-4 w-4">{icon}</div>}
       </CardHeader>
-\
+      <CardContent>
+        <div className="text-2xl font-bold">{isLoading ? "Loading..." : value}</div>
+        {trend && (
+          <p className="text-xs text-muted-foreground">
+            {trend.value >= 0 ? "+" : ""}{trend.value}% {trend.label}
+          </p>
+        )}
+      </CardContent>
+      {footer && <CardFooter>{footer}</CardFooter>}
+    </Card>
+  )
+}
