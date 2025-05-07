@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { FileUp, Eye, Trash2, FileText, FileImage, FileSpreadsheet } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -33,40 +33,6 @@ export default function DocumentsPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
-  const uploadCompleted = useRef(false)
-  
-  // Use an effect to handle document addition after upload completes
-  useEffect(() => {
-    if (uploadProgress >= 100 && isUploading && selectedFile && uploadCompleted.current === false) {
-      uploadCompleted.current = true;
-      setIsUploading(false);
-      
-      // Add the document after the render cycle
-      setTimeout(() => {
-        addDocument({
-          name: selectedFile.name,
-          uploadedBy: "Current User",
-          type: selectedFile.name.split(".").pop() || "",
-          size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
-          tags: ["New"],
-        });
-        
-        setSelectedFile(null);
-        uploadCompleted.current = false;
-        
-        // Reset the file input
-        const fileInput = document.getElementById("document-upload") as HTMLInputElement;
-        if (fileInput) fileInput.value = "";
-        
-        toast({
-          title: "Document uploaded",
-          description: "The document has been uploaded successfully.",
-        });
-        
-        setUploadProgress(0);
-      }, 0);
-    }
-  }, [uploadProgress, isUploading, selectedFile, addDocument, toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -80,13 +46,34 @@ export default function DocumentsPage() {
     // Simulate upload progress
     setIsUploading(true)
     setUploadProgress(0)
-    uploadCompleted.current = false;
 
     const interval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval)
-          return 100;
+          setIsUploading(false)
+
+          // Add the document after upload completes
+          addDocument({
+            name: selectedFile.name,
+            uploadedBy: "Current User",
+            type: selectedFile.name.split(".").pop() || "",
+            size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
+            tags: ["New"],
+          })
+
+          setSelectedFile(null)
+
+          // Reset the file input
+          const fileInput = document.getElementById("document-upload") as HTMLInputElement
+          if (fileInput) fileInput.value = ""
+
+          toast({
+            title: "Document uploaded",
+            description: "The document has been uploaded successfully.",
+          })
+
+          return 0
         }
         return prev + 10
       })

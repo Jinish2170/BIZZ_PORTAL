@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { useStore } from "./store"
 import { useRouter } from "next/navigation"
-import Cookies from "js-cookie"
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -19,29 +18,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const authState = Cookies.get("auth-state")
-    if (authState) {
+    // Check if user is already authenticated by checking the cookie
+    const cookies = document.cookie.split(";")
+    const hasAuthCookie = cookies.some((cookie) => cookie.trim().startsWith("auth-state="))
+
+    if (hasAuthCookie) {
       setIsAuthenticated(true)
       setCurrentUser({
-        id: "admin",
-        name: "Admin User",
-        email: "admin@gmail.com",
-        role: "admin"
+        id: "user",
+        name: "Demo User",
+        email: "demo@example.com",
+        role: "user"
       })
     }
   }, [setCurrentUser])
 
   const login = async (email: string, password: string) => {
-    // Hardcoded admin credentials
-    if (email === "admin@gmail.com" && password === "admin123") {
+    if (email && password) {
       setIsAuthenticated(true)
-      Cookies.set("auth-state", "true", { path: "/" })
+      // Set cookie with path=/ and secure flags
+      document.cookie = "auth-state=true; path=/; secure"
       setCurrentUser({
-        id: "admin",
-        name: "Admin User",
-        email: "admin@gmail.com",
-        role: "admin"
+        id: "user",
+        name: "Demo User",
+        email: email,
+        role: "user"
       })
       return true
     }
@@ -50,7 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false)
-    Cookies.remove("auth-state", { path: "/" })
+    // Remove the auth cookie
+    document.cookie = "auth-state=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
     setCurrentUser(null)
     router.push("/login")
   }

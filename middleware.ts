@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
-  const authState = request.cookies.get("auth-state")?.value
+  const authState = request.cookies.get("auth-state")
   const isLoginPage = request.nextUrl.pathname === "/login"
 
   // If the user is not authenticated and trying to access a protected route

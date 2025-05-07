@@ -1,10 +1,7 @@
-"use client"
-
 import type React from "react"
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 const dataCardVariants = cva("transition-all duration-200 ease-in-out", {
   variants: {
@@ -61,23 +58,4 @@ export function DataCard({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon && <div className="h-4 w-4">{icon}</div>}
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {trend && (
-          <div className="mt-2 flex items-center text-xs">
-            {trend.value > 0 ? (
-              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-            ) : (
-              <ArrowDownRight className="mr-1 h-3 w-3 text-red-500" />
-            )}
-            <span className={cn(trend.value > 0 ? "text-green-500" : "text-red-500")}>
-              {Math.abs(trend.value)}%
-            </span>
-            <span className="ml-1 text-muted-foreground">{trend.label}</span>
-          </div>
-        )}
-      </CardContent>
-      {footer && <CardFooter className="pt-4">{footer}</CardFooter>}
-    </Card>
-  )
-}
+\
