@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Pencil, Trash2, Check, X, Download, Filter, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -29,7 +29,6 @@ import { z } from "zod"
 import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { useStore, type Supplier } from "@/lib/store"
 import {
   PageContainer,
   PageHeader,
@@ -41,18 +40,26 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+interface Supplier {
+  id: number
+  name: string
+  contact: string
+  status: "active" | "inactive"
+  category: string
+  last_updated: string
+}
+
 export default function SuppliersPage() {
   const { toast } = useToast()
-  const { suppliers, addSupplier, updateSupplier, deleteSupplier } = useStore()
-
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null)
@@ -64,42 +71,107 @@ export default function SuppliersPage() {
     category: "Technology",
   })
 
+  // Fetch suppliers on component mount
+  useEffect(() => {
+    fetchSuppliers()
+  }, [])
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await fetch("/api/suppliers")
+      const data = await response.json()
+      setSuppliers(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch suppliers",
+      })
+    }
+  }
+
   // Validation schemas
   const nameSchema = z.string().min(3, "Name must be at least 3 characters")
   const contactSchema = z.string().email("Must be a valid email address")
 
-  const handleAddSupplier = () => {
-    addSupplier(formData)
-    setFormData({ name: "", contact: "", status: "active", category: "Technology" })
-    setIsAddDialogOpen(false)
+  const handleAddSupplier = async () => {
+    try {
+      const response = await fetch("/api/suppliers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
 
-    toast({
-      title: "Supplier added",
-      description: "The supplier has been added successfully.",
-    })
+      if (!response.ok) throw new Error("Failed to add supplier")
+
+      await fetchSuppliers()
+      setFormData({ name: "", contact: "", status: "active", category: "Technology" })
+      setIsAddDialogOpen(false)
+
+      toast({
+        title: "Supplier added",
+        description: "The supplier has been added successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add supplier",
+      })
+    }
   }
 
-  const handleEditSupplier = () => {
+  const handleEditSupplier = async () => {
     if (!currentSupplier) return
 
-    updateSupplier(currentSupplier.id, formData)
-    setFormData({ name: "", contact: "", status: "active", category: "Technology" })
-    setIsEditDialogOpen(false)
-    setCurrentSupplier(null)
+    try {
+      const response = await fetch(`/api/suppliers/${currentSupplier.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
 
-    toast({
-      title: "Supplier updated",
-      description: "The supplier has been updated successfully.",
-    })
+      if (!response.ok) throw new Error("Failed to update supplier")
+
+      await fetchSuppliers()
+      setFormData({ name: "", contact: "", status: "active", category: "Technology" })
+      setIsEditDialogOpen(false)
+      setCurrentSupplier(null)
+
+      toast({
+        title: "Supplier updated",
+        description: "The supplier has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update supplier",
+      })
+    }
   }
 
-  const handleDeleteSupplier = (id: string) => {
-    deleteSupplier(id)
+  const handleDeleteSupplier = async (id: number) => {
+    try {
+      const response = await fetch(`/api/suppliers/${id}`, {
+        method: "DELETE",
+      })
 
-    toast({
-      title: "Supplier deleted",
-      description: "The supplier has been deleted successfully.",
-    })
+      if (!response.ok) throw new Error("Failed to delete supplier")
+
+      await fetchSuppliers()
+
+      toast({
+        title: "Supplier deleted",
+        description: "The supplier has been deleted successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete supplier",
+      })
+    }
   }
 
   const openEditDialog = (supplier: Supplier) => {

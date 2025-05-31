@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Pencil, Trash2, Download, Filter, MoreHorizontal, PieChart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,7 +30,6 @@ import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { useStore, type Budget } from "@/lib/store"
 import {
   PageContainer,
   PageHeader,
@@ -39,75 +38,147 @@ import {
   PageActions,
   PageContent,
 } from "@/components/layout/page-container"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+
+interface Budget {
+  id: number;
+  name: string;
+  total_amount: number;
+  spent_amount: number;
+  department: string;
+  last_updated: string;
+}
 
 export default function BudgetsPage() {
   const { toast } = useToast()
-  const { budgets, addBudget, updateBudget, deleteBudget } = useStore()
-
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [currentBudget, setCurrentBudget] = useState<Budget | null>(null)
 
   const [formData, setFormData] = useState({
     name: "",
-    totalAmount: 0,
-    spentAmount: 0,
+    total_amount: 0,
+    spent_amount: 0,
     department: "Marketing",
   })
+
+  useEffect(() => {
+    fetchBudgets()
+  }, [])
+
+  const fetchBudgets = async () => {
+    try {
+      const response = await fetch('/api/budgets')
+      const data = await response.json()
+      setBudgets(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch budgets",
+      })
+    }
+  }
 
   // Validation schemas
   const nameSchema = z.string().min(3, "Name must be at least 3 characters")
   const amountSchema = z.number().min(0, "Amount must be a positive number")
 
-  const handleAddBudget = () => {
-    addBudget(formData)
-    setFormData({ name: "", totalAmount: 0, spentAmount: 0, department: "Marketing" })
-    setIsAddDialogOpen(false)
+  const handleAddBudget = async () => {
+    try {
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-    toast({
-      title: "Budget added",
-      description: "The budget has been added successfully.",
-    })
+      if (!response.ok) throw new Error('Failed to add budget')
+
+      await fetchBudgets()
+      setFormData({ name: "", total_amount: 0, spent_amount: 0, department: "Marketing" })
+      setIsAddDialogOpen(false)
+
+      toast({
+        title: "Budget added",
+        description: "The budget has been added successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add budget",
+      })
+    }
   }
 
-  const handleEditBudget = () => {
+  const handleEditBudget = async () => {
     if (!currentBudget) return
 
-    updateBudget(currentBudget.id, formData)
-    setFormData({ name: "", totalAmount: 0, spentAmount: 0, department: "Marketing" })
-    setIsEditDialogOpen(false)
-    setCurrentBudget(null)
+    try {
+      const response = await fetch(`/api/budgets/${currentBudget.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-    toast({
-      title: "Budget updated",
-      description: "The budget has been updated successfully.",
-    })
+      if (!response.ok) throw new Error('Failed to update budget')
+
+      await fetchBudgets()
+      setFormData({ name: "", total_amount: 0, spent_amount: 0, department: "Marketing" })
+      setIsEditDialogOpen(false)
+      setCurrentBudget(null)
+
+      toast({
+        title: "Budget updated",
+        description: "The budget has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget",
+      })
+    }
   }
 
-  const handleDeleteBudget = (id: string) => {
-    deleteBudget(id)
+  const handleDeleteBudget = async (id: number) => {
+    try {
+      const response = await fetch(`/api/budgets/${id}`, {
+        method: 'DELETE',
+      })
 
-    toast({
-      title: "Budget deleted",
-      description: "The budget has been deleted successfully.",
-    })
+      if (!response.ok) throw new Error('Failed to delete budget')
+
+      await fetchBudgets()
+
+      toast({
+        title: "Budget deleted",
+        description: "The budget has been deleted successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete budget",
+      })
+    }
   }
 
   const openEditDialog = (budget: Budget) => {
     setCurrentBudget(budget)
     setFormData({
       name: budget.name,
-      totalAmount: budget.totalAmount,
-      spentAmount: budget.spentAmount,
+      total_amount: budget.total_amount,
+      spent_amount: budget.spent_amount,
       department: budget.department,
     })
     setIsEditDialogOpen(true)
@@ -140,21 +211,21 @@ export default function BudgetsPage() {
       ),
     },
     {
-      accessorKey: "totalAmount",
+      accessorKey: "total_amount",
       header: "Total Amount",
-      cell: ({ row }) => <div>${(row.getValue("totalAmount") as number).toLocaleString()}</div>,
+      cell: ({ row }) => <div>${(row.getValue("total_amount") as number).toLocaleString()}</div>,
     },
     {
-      accessorKey: "spentAmount",
+      accessorKey: "spent_amount",
       header: "Spent Amount",
-      cell: ({ row }) => <div>${(row.getValue("spentAmount") as number).toLocaleString()}</div>,
+      cell: ({ row }) => <div>${(row.getValue("spent_amount") as number).toLocaleString()}</div>,
     },
     {
       id: "progress",
       header: "Progress",
       cell: ({ row }) => {
-        const total = row.getValue("totalAmount") as number
-        const spent = row.getValue("spentAmount") as number
+        const total = row.getValue("total_amount") as number
+        const spent = row.getValue("spent_amount") as number
         const progress = calculateProgress(spent, total)
         const status = getBudgetStatus(spent, total)
 
@@ -178,8 +249,8 @@ export default function BudgetsPage() {
       id: "remaining",
       header: "Remaining",
       cell: ({ row }) => {
-        const total = row.getValue("totalAmount") as number
-        const spent = row.getValue("spentAmount") as number
+        const total = row.getValue("total_amount") as number
+        const spent = row.getValue("spent_amount") as number
         const remaining = total - spent
 
         return <div className="font-medium">${remaining.toLocaleString()}</div>
@@ -233,15 +304,15 @@ export default function BudgetsPage() {
   ]
 
   // Calculate summary statistics
-  const totalBudgetAmount = budgets.reduce((sum, budget) => sum + budget.totalAmount, 0)
-  const totalSpentAmount = budgets.reduce((sum, budget) => sum + budget.spentAmount, 0)
+  const totalBudgetAmount = budgets.reduce((sum, budget) => sum + budget.total_amount, 0)
+  const totalSpentAmount = budgets.reduce((sum, budget) => sum + budget.spent_amount, 0)
   const totalRemainingAmount = totalBudgetAmount - totalSpentAmount
   const overallProgress = totalBudgetAmount > 0 ? Math.round((totalSpentAmount / totalBudgetAmount) * 100) : 0
 
   // Group budgets by department
   const budgetsByDepartment = budgets.reduce(
     (acc, budget) => {
-      acc[budget.department] = (acc[budget.department] || 0) + budget.totalAmount
+      acc[budget.department] = (acc[budget.department] || 0) + budget.total_amount
       return acc
     },
     {} as Record<string, number>,
@@ -298,18 +369,18 @@ export default function BudgetsPage() {
                 />
                 <FormField
                   label="Total Amount"
-                  name="totalAmount"
+                  name="total_amount"
                   type="number"
-                  value={formData.totalAmount}
+                  value={formData.total_amount}
                   onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
                   validation={amountSchema}
                   required
                 />
                 <FormField
                   label="Spent Amount"
-                  name="spentAmount"
+                  name="spent_amount"
                   type="number"
-                  value={formData.spentAmount}
+                  value={formData.spent_amount}
                   onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
                   validation={amountSchema}
                   required
@@ -318,11 +389,11 @@ export default function BudgetsPage() {
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Remaining Amount</span>
                     <span className="text-sm font-medium">
-                      ${(formData.totalAmount - formData.spentAmount).toLocaleString()}
+                      ${(formData.total_amount - formData.spent_amount).toLocaleString()}
                     </span>
                   </div>
                   <Progress
-                    value={formData.totalAmount > 0 ? 100 - (formData.spentAmount / formData.totalAmount) * 100 : 0}
+                    value={formData.total_amount > 0 ? 100 - (formData.spent_amount / formData.total_amount) * 100 : 0}
                     className="h-2"
                   />
                 </div>
@@ -407,7 +478,7 @@ export default function BudgetsPage() {
                 {Object.entries(budgetsByDepartment).map(([department, amount], index) => {
                   const spent = budgets
                     .filter((b) => b.department === department)
-                    .reduce((sum, b) => sum + b.spentAmount, 0)
+                    .reduce((sum, b) => sum + b.spent_amount, 0)
                   const progress = amount > 0 ? Math.round((spent / amount) * 100) : 0
 
                   return (
@@ -496,18 +567,18 @@ export default function BudgetsPage() {
             />
             <FormField
               label="Total Amount"
-              name="totalAmount"
+              name="total_amount"
               type="number"
-              value={formData.totalAmount}
+              value={formData.total_amount}
               onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
               validation={amountSchema}
               required
             />
             <FormField
               label="Spent Amount"
-              name="spentAmount"
+              name="spent_amount"
               type="number"
-              value={formData.spentAmount}
+              value={formData.spent_amount}
               onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
               validation={amountSchema}
               required
@@ -516,11 +587,11 @@ export default function BudgetsPage() {
               <div className="flex justify-between">
                 <span className="text-sm font-medium">Remaining Amount</span>
                 <span className="text-sm font-medium">
-                  ${(formData.totalAmount - formData.spentAmount).toLocaleString()}
+                  ${(formData.total_amount - formData.spent_amount).toLocaleString()}
                 </span>
               </div>
               <Progress
-                value={formData.totalAmount > 0 ? 100 - (formData.spentAmount / formData.totalAmount) * 100 : 0}
+                value={formData.total_amount > 0 ? 100 - (formData.spent_amount / formData.total_amount) * 100 : 0}
                 className="h-2"
               />
             </div>

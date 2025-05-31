@@ -1,11 +1,16 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { FileUp, Eye, Trash2, FileText, FileImage, FileSpreadsheet } from "lucide-react"
+import { useState, useEffect } from "react"
+import { FileUp, Eye, Trash2, Download, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,142 +22,189 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Card, CardContent } from "@/components/ui/card"
+import { z } from "zod"
 import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { useStore, type Document } from "@/lib/store"
+import {
+  PageContainer,
+  PageHeader,
+  PageHeaderHeading,
+  PageHeaderDescription,
+  PageContent,
+} from "@/components/layout/page-container"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+interface Document {
+  id: number;
+  name: string;
+  uploaded_by: string;
+  upload_date: string;
+  type: string;
+  size: string;
+  related_supplier_name?: string;
+  url: string;
+}
 
 export default function DocumentsPage() {
   const { toast } = useToast()
-  const { documents, addDocument, deleteDocument } = useStore()
+  const [documents, setDocuments] = useState<Document[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewDocument, setPreviewDocument] = useState<Document | null>(null)
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0])
+  useEffect(() => {
+    fetchDocuments()
+  }, [])
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/documents')
+      const data = await response.json()
+      setDocuments(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch documents",
+      })
     }
   }
 
-  const handleUpload = () => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "File size must be less than 10MB",
+        })
+        return
+      }
+
+      // Check file type
+      const allowedTypes = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png']
+      const fileType = file.name.split('.').pop()?.toLowerCase()
+      if (!fileType || !allowedTypes.includes(fileType)) {
+        toast({
+          title: "Error",
+          description: "Invalid file type",
+        })
+        return
+      }
+
+      setSelectedFile(file)
+    }
+  }
+
+  const handleUpload = async () => {
     if (!selectedFile) return
 
-    // Simulate upload progress
     setIsUploading(true)
     setUploadProgress(0)
 
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsUploading(false)
-
-          // Add the document after upload completes
-          addDocument({
-            name: selectedFile.name,
-            uploadedBy: "Current User",
-            type: selectedFile.name.split(".").pop() || "",
-            size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
-            tags: ["New"],
-          })
-
-          setSelectedFile(null)
-
-          // Reset the file input
-          const fileInput = document.getElementById("document-upload") as HTMLInputElement
-          if (fileInput) fileInput.value = ""
-
-          toast({
-            title: "Document uploaded",
-            description: "The document has been uploaded successfully.",
-          })
-
-          return 0
-        }
-        return prev + 10
+    try {
+      // Create form data
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('uploaded_by', 'Current User') // Replace with actual user
+      
+      const response = await fetch('/api/documents', {
+        method: 'POST',
+        body: formData,
       })
-    }, 300)
+
+      if (!response.ok) throw new Error('Failed to upload document')
+
+      await fetchDocuments()
+      setSelectedFile(null)
+      setUploadProgress(100)
+
+      toast({
+        title: "Document uploaded",
+        description: "The document has been uploaded successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload document",
+      })
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
   }
 
-  const handleDeleteDocument = (id: string) => {
-    deleteDocument(id)
+  const handleDeleteDocument = async (id: number) => {
+    try {
+      const response = await fetch(`/api/documents/${id}`, {
+        method: 'DELETE',
+      })
 
-    toast({
-      title: "Document deleted",
-      description: "The document has been deleted successfully.",
-    })
+      if (!response.ok) throw new Error('Failed to delete document')
+
+      await fetchDocuments()
+
+      toast({
+        title: "Document deleted",
+        description: "The document has been deleted successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+      })
+    }
   }
 
   const handlePreviewDocument = (document: Document) => {
     setPreviewDocument(document)
-    setIsPreviewOpen(true)
-  }
-
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case "pdf":
-        return <FileText className="h-5 w-5 text-red-500" />
-      case "docx":
-        return <FileText className="h-5 w-5 text-blue-500" />
-      case "xlsx":
-        return <FileSpreadsheet className="h-5 w-5 text-green-500" />
-      case "pptx":
-        return <FileText className="h-5 w-5 text-orange-500" />
-      case "png":
-      case "jpg":
-      case "jpeg":
-        return <FileImage className="h-5 w-5 text-purple-500" />
-      default:
-        return <FileText className="h-5 w-5 text-gray-500" />
-    }
   }
 
   const columns: ColumnDef<Document>[] = [
     {
-      id: "name",
-      header: "Document Name",
-      cell: ({ row }) => {
-        const document = row.original
-        return (
-          <div className="flex items-center gap-2">
-            {getFileIcon(document.type)}
-            <span className="font-medium">{document.name}</span>
-          </div>
-        )
-      },
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {row.original.type === "pdf" && <FileUp className="inline-block mr-2 h-4 w-4" />}
+          {row.getValue("name")}
+        </div>
+      ),
     },
     {
-      accessorKey: "uploadedBy",
+      accessorKey: "uploaded_by",
       header: "Uploaded By",
     },
     {
-      accessorKey: "uploadedDate",
-      header: "Uploaded Date",
+      accessorKey: "upload_date",
+      header: "Upload Date",
+    },
+    {
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-normal uppercase">
+          {row.getValue("type")}
+        </Badge>
+      ),
     },
     {
       accessorKey: "size",
       header: "Size",
     },
     {
-      id: "tags",
-      header: "Tags",
+      accessorKey: "related_supplier_name",
+      header: "Related Supplier",
       cell: ({ row }) => {
-        const document = row.original
-        return (
-          <div className="flex flex-wrap gap-1">
-            {document.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        )
+        const supplierName = row.getValue("related_supplier_name") as string | null
+        return supplierName ? (
+          <Badge variant="outline" className="font-normal">
+            {supplierName}
+          </Badge>
+        ) : null
       },
     },
     {
@@ -193,95 +245,99 @@ export default function DocumentsPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <PageContainer>
+      <PageHeader>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
-          <p className="text-muted-foreground mt-1">Upload and manage your business documents</p>
+          <PageHeaderHeading>Documents</PageHeaderHeading>
+          <PageHeaderDescription>Manage your documents and files</PageHeaderDescription>
         </div>
-      </div>
+      </PageHeader>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold">Upload Document</h2>
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-                <div className="flex-1">
-                  <input id="document-upload" type="file" className="hidden" onChange={handleFileChange} />
-                  <label
-                    htmlFor="document-upload"
-                    className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
-                  >
-                    <FileUp className="mb-2 h-6 w-6 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
-                    </span>
-                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      PDF, DOCX, XLSX, JPG, PNG (max. 10MB)
-                    </span>
-                  </label>
-                </div>
-                <div className="flex flex-col gap-2 justify-end">
-                  <Button
-                    onClick={handleUpload}
-                    disabled={!selectedFile || isUploading}
-                    className="self-stretch md:self-end"
-                  >
-                    {isUploading ? `Uploading ${uploadProgress}%` : "Upload"}
-                  </Button>
-                  {selectedFile && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
-                    </p>
-                  )}
-                </div>
-              </div>
+      <PageContent>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Upload Document</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <input
+                type="file"
+                id="document-upload"
+                className="hidden"
+                onChange={handleFileSelect}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              />
+              <label
+                htmlFor="document-upload"
+                className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
+              >
+                <FileUp className="mb-2 h-6 w-6 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
+                </span>
+                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  PDF, DOCX, XLSX, JPG, PNG (max. 10MB)
+                </span>
+              </label>
+            </div>
+            <div className="flex flex-col gap-2 justify-end">
+              <Button
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading}
+                className="w-full sm:w-auto"
+              >
+                {isUploading ? "Uploading..." : "Upload Document"}
+              </Button>
             </div>
           </CardContent>
         </Card>
-      </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <DataTable columns={columns} data={documents} searchPlaceholder="Search documents..." />
-      </motion.div>
-
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Document Preview</DialogTitle>
-          </DialogHeader>
-          {previewDocument && (
-            <div className="flex flex-col items-center justify-center p-6 border rounded-md bg-gray-50 dark:bg-gray-800 min-h-[300px]">
-              <div className="text-6xl mb-4">{getFileIcon(previewDocument.type)}</div>
-              <h3 className="text-lg font-medium">{previewDocument.name}</h3>
-              <div className="flex flex-wrap gap-2 mt-2 justify-center">
-                <Badge variant="outline">{previewDocument.type.toUpperCase()}</Badge>
-                <Badge variant="outline">{previewDocument.size}</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Uploaded by {previewDocument.uploadedBy} on {previewDocument.uploadedDate}
-              </p>
-              <div className="flex flex-wrap gap-1 mt-4 justify-center">
-                {previewDocument.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              <p className="mt-6 text-sm text-center text-muted-foreground">
-                This is a preview placeholder. In a real application, the document would be displayed or downloaded
-                here.
-              </p>
-              <Button className="mt-4">Download Document</Button>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>All Documents</CardTitle>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
             </div>
-          )}
+          </CardHeader>
+          <CardContent className="p-0">
+            <DataTable columns={columns} data={documents} searchPlaceholder="Search documents..." />
+          </CardContent>
+        </Card>
+      </PageContent>
+
+      <Dialog open={!!previewDocument} onOpenChange={() => setPreviewDocument(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{previewDocument?.name}</DialogTitle>
+            <DialogDescription>
+              Uploaded by {previewDocument?.uploaded_by} on {previewDocument?.upload_date}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="aspect-video w-full bg-muted">
+            {previewDocument && (
+              <iframe
+                src={previewDocument.url}
+                className="w-full h-full"
+                title={previewDocument.name}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewDocument(null)}>
+              Close
+            </Button>
+            <Button asChild>
+              <a href={previewDocument?.url} download>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </a>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

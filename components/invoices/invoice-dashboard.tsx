@@ -1,34 +1,69 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+import { DateRange } from 'react-day-picker'
+import { useState, useEffect } from "react"
 import { Plus, Download, DollarSign, Clock, CheckCircle2, AlertCircle, FileText, Printer, Mail } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
 import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { DataCard } from "@/components/ui/data-card"
-import { InvoiceChart } from "@/components/invoices/invoice-chart"
-import { InvoiceForm } from "@/components/invoices/invoice-form"
-import { motion } from "framer-motion"
-import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useStore, type Invoice } from "@/lib/store"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { InvoiceForm } from "./invoice-form"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+
+interface Invoice {
+  id: number;
+  invoice_number: string;
+  supplier_id: number;
+  supplier_name?: string;
+  amount: number;
+  status: "paid" | "pending" | "overdue" | "draft";
+  issue_date: string;
+  due_date: string;
+  description: string;
+}
 
 export function InvoiceDashboard() {
   const { toast } = useToast()
-  const { invoices, addInvoice, updateInvoice, deleteInvoice, updateInvoiceStatus } = useStore()
-
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+
+  useEffect(() => {
+    fetchInvoices()
+  }, [])
+
+  const fetchInvoices = async () => {
+    try {
+      const response = await fetch('/api/invoices')
+      const data = await response.json()
+      setInvoices(data)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch invoices",
+      })
+    }
+  }
 
   const filteredInvoices = invoices.filter((invoice) => {
     if (statusFilter !== "all" && invoice.status !== statusFilter) {
@@ -36,7 +71,7 @@ export function InvoiceDashboard() {
     }
 
     if (dateRange?.from && dateRange?.to) {
-      const invoiceDate = new Date(invoice.issueDate)
+      const invoiceDate = new Date(invoice.issue_date)
       return invoiceDate >= dateRange.from && invoiceDate <= dateRange.to
     }
 
@@ -57,12 +92,12 @@ export function InvoiceDashboard() {
 
   const columns: ColumnDef<Invoice>[] = [
     {
-      accessorKey: "invoiceNumber",
+      accessorKey: "invoice_number",
       header: "Invoice #",
-      cell: ({ row }) => <div className="font-medium">{row.getValue("invoiceNumber")}</div>,
+      cell: ({ row }) => <div className="font-medium">{row.getValue("invoice_number")}</div>,
     },
     {
-      accessorKey: "client",
+      accessorKey: "supplier_name",
       header: "Client",
     },
     {
@@ -79,11 +114,11 @@ export function InvoiceDashboard() {
       ),
     },
     {
-      accessorKey: "issueDate",
+      accessorKey: "issue_date",
       header: "Issue Date",
     },
     {
-      accessorKey: "dueDate",
+      accessorKey: "due_date",
       header: "Due Date",
     },
     {
@@ -125,10 +160,9 @@ export function InvoiceDashboard() {
               variant="ghost"
               size="icon"
               onClick={() => {
-                setSelectedInvoice(invoice)
                 toast({
                   title: "Invoice details",
-                  description: `Viewing invoice ${invoice.invoiceNumber}`,
+                  description: `Viewing invoice ${invoice.invoice_number}`,
                 })
               }}
             >
@@ -141,7 +175,7 @@ export function InvoiceDashboard() {
               onClick={() => {
                 toast({
                   title: "Invoice printed",
-                  description: `Invoice ${invoice.invoiceNumber} sent to printer`,
+                  description: `Invoice ${invoice.invoice_number} sent to printer`,
                 })
               }}
             >
@@ -154,7 +188,7 @@ export function InvoiceDashboard() {
               onClick={() => {
                 toast({
                   title: "Invoice sent",
-                  description: `Invoice ${invoice.invoiceNumber} sent to client`,
+                  description: `Invoice ${invoice.invoice_number} sent to client`,
                 })
               }}
             >
@@ -167,21 +201,83 @@ export function InvoiceDashboard() {
     },
   ]
 
-  const handleCreateInvoice = (data: any) => {
-    // Generate invoice number
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, "0")}`
+  const handleCreateInvoice = async (data: any) => {
+    try {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          invoice_number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
+          status: data.status || 'draft',
+        }),
+      })
 
-    addInvoice({
-      ...data,
-      invoiceNumber,
-      status: data.status || "draft",
-    })
+      if (!response.ok) throw new Error('Failed to create invoice')
 
-    toast({
-      title: "Invoice created",
-      description: "The invoice has been created successfully",
-    })
-    setIsCreateInvoiceOpen(false)
+      await fetchInvoices()
+      setIsCreateInvoiceOpen(false)
+
+      toast({
+        title: "Invoice created",
+        description: "The invoice has been created successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create invoice",
+      })
+    }
+  }
+
+  const handleEditInvoice = async (id: number, data: any) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) throw new Error('Failed to update invoice')
+
+      await fetchInvoices()
+
+      toast({
+        title: "Invoice updated",
+        description: "The invoice has been updated successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update invoice",
+      })
+    }
+  }
+
+  const handleDeleteInvoice = async (id: number) => {
+    try {
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete invoice')
+
+      await fetchInvoices()
+
+      toast({
+        title: "Invoice deleted",
+        description: "The invoice has been deleted successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete invoice",
+      })
+    }
   }
 
   const handleExportInvoices = () => {
@@ -197,6 +293,10 @@ export function InvoiceDashboard() {
         description: "Your invoices have been exported successfully",
       })
     }, 1500)
+  }
+
+  const handleDateChange = (range: DateRange | undefined) => {
+    setDateRange(range)
   }
 
   return (
@@ -236,7 +336,10 @@ export function InvoiceDashboard() {
             <CardTitle className="text-sm font-medium">Date Range</CardTitle>
           </CardHeader>
           <CardContent>
-            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+            <DatePickerWithRange 
+              date={dateRange} 
+              setDate={handleDateChange}
+            />
           </CardContent>
         </Card>
 
@@ -262,134 +365,53 @@ export function InvoiceDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <DataCard
-          title="Total Invoiced"
-          value={`$${totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<DollarSign className="h-4 w-4" />}
-          variant="primary"
-        />
-        <DataCard
-          title="Total Paid"
-          value={`$${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          variant="success"
-          trend={{
-            value: Math.round((totalPaid / totalInvoiced) * 100),
-            label: "of total invoiced",
-          }}
-        />
-        <DataCard
-          title="Pending Payment"
-          value={`$${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<Clock className="h-4 w-4" />}
-          variant="warning"
-          trend={{
-            value: Math.round((totalPending / totalInvoiced) * 100),
-            label: "of total invoiced",
-          }}
-        />
-        <DataCard
-          title="Overdue"
-          value={`$${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          icon={<AlertCircle className="h-4 w-4" />}
-          variant="destructive"
-          trend={{
-            value: Math.round((totalOverdue / totalInvoiced) * 100),
-            label: "of total invoiced",
-          }}
-        />
+        <div className="p-4 bg-primary rounded-lg shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="text-white">
+              <div className="text-sm">Total Invoiced</div>
+              <div className="text-lg font-bold">
+                ${totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <DollarSign className="h-8 w-8 text-white opacity-75" />
+          </div>
+        </div>
+        <div className="p-4 bg-success rounded-lg shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="text-white">
+              <div className="text-sm">Total Paid</div>
+              <div className="text-lg font-bold">
+                ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <CheckCircle2 className="h-8 w-8 text-white opacity-75" />
+          </div>
+        </div>
+        <div className="p-4 bg-warning rounded-lg shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="text-white">
+              <div className="text-sm">Pending Payment</div>
+              <div className="text-lg font-bold">
+                ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <Clock className="h-8 w-8 text-white opacity-75" />
+          </div>
+        </div>
+        <div className="p-4 bg-destructive rounded-lg shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="text-white">
+              <div className="text-sm">Overdue</div>
+              <div className="text-lg font-bold">
+                ${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <AlertCircle className="h-8 w-8 text-white opacity-75" />
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="invoices">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="invoices" className="space-y-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <DataTable columns={columns} data={filteredInvoices} searchPlaceholder="Search invoices..." />
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Invoice Status Distribution</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <InvoiceChart
-                    type="pie"
-                    data={{
-                      labels: ["Paid", "Pending", "Overdue", "Draft"],
-                      values: [
-                        totalPaid,
-                        totalPending,
-                        totalOverdue,
-                        invoices.filter((i) => i.status === "draft").reduce((sum, i) => sum + i.amount, 0),
-                      ],
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Invoice Totals</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <InvoiceChart
-                    type="bar"
-                    data={{
-                      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                      values: [35000, 42000, 37500, 45000, 52000, 48000],
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="md:col-span-2"
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cash Flow</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <InvoiceChart
-                    type="line"
-                    data={{
-                      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                      datasets: [
-                        {
-                          label: "Invoiced",
-                          values: [35000, 42000, 37500, 45000, 52000, 48000],
-                        },
-                        {
-                          label: "Received",
-                          values: [32000, 38000, 35000, 40000, 45000, 42000],
-                        },
-                      ],
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <DataTable columns={columns} data={filteredInvoices} searchPlaceholder="Search invoices..." />
     </div>
   )
 }
