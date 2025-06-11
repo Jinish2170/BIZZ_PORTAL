@@ -11,9 +11,7 @@ import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { DataCard } from "@/components/ui/data-card"
-import { AdvancedChart } from "@/components/data-analysis/advanced-chart"
-import { PredictiveChart } from "@/components/data-analysis/predictive-chart"
-import { ComparisonChart } from "@/components/data-analysis/comparison-chart"
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { KpiTracker } from "@/components/data-analysis/kpi-tracker"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
@@ -44,16 +42,13 @@ export function AnalysisDashboard() {
     invoices: [],
     budgets: [],
     suppliers: [],
-    documents: []
-  })
+    documents: []  })
   const [metrics, setMetrics] = useState<AnalysisMetric[]>([])
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["revenue", "expenses", "profit"])
-  const [comparisonPeriod, setComparisonPeriod] = useState("previous_period")
-  const [chartType, setChartType] = useState("bar")
 
   useEffect(() => {
     const fetchData = async () => {
@@ -350,9 +345,7 @@ export function AnalysisDashboard() {
             </Button>
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4">
+      </div>      <div className="flex flex-col md:flex-row gap-4">
         <Card className="w-full md:w-auto md:flex-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Date Range</CardTitle>
@@ -387,26 +380,7 @@ export function AnalysisDashboard() {
             </Select>
           </CardContent>
         </Card>
-
-        <Card className="w-full md:w-auto md:flex-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Comparison</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={comparisonPeriod} onValueChange={setComparisonPeriod}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="previous_period">Previous Period</SelectItem>
-                <SelectItem value="previous_year">Previous Year</SelectItem>
-                <SelectItem value="budget">Budget</SelectItem>
-                <SelectItem value="forecast">Forecast</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      </div>      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      </div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <DataCard
           title="Total Revenue"
           value={`$${revenueMetric?.value.toLocaleString() || '0'}`}
@@ -434,53 +408,19 @@ export function AnalysisDashboard() {
           trend={{ value: profitMargin > 20 ? 10 : -5, label: "vs previous period" }}
           variant="info"
         />
-      </div>
-
-      <Tabs defaultValue="charts">
-        <TabsList className="grid w-full grid-cols-4">
+      </div>      <Tabs defaultValue="charts">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="charts">Charts</TabsTrigger>
-          <TabsTrigger value="comparison">Comparison</TabsTrigger>
-          <TabsTrigger value="predictive">Predictive</TabsTrigger>
+          <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="kpis">KPIs</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="charts" className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex gap-2">
-              <Button
-                variant={chartType === "bar" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChartType("bar")}
-              >
-                <BarChart2 className="h-4 w-4 mr-2" />
-                Bar
-              </Button>
-              <Button
-                variant={chartType === "line" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChartType("line")}
-              >
-                <LineChart className="h-4 w-4 mr-2" />
-                Line
-              </Button>
-              <Button
-                variant={chartType === "pie" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setChartType("pie")}
-              >
-                <PieChart className="h-4 w-4 mr-2" />
-                Pie
-              </Button>
-            </div>
-          </div>
-
+        </TabsList>        <TabsContent value="charts" className="space-y-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <Card>
               <CardHeader>
-                <CardTitle>Financial Performance</CardTitle>
+                <CardTitle>Business Overview</CardTitle>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <AdvancedChart type={chartType} metrics={metrics} comparisonPeriod={comparisonPeriod} />
+                <DashboardCharts type="invoices" />
               </CardContent>
             </Card>
           </motion.div>
@@ -493,10 +433,10 @@ export function AnalysisDashboard() {
             >
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue by Category</CardTitle>
+                  <CardTitle>Budget Allocation</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
-                  <AdvancedChart type="pie" metrics={metrics} comparisonPeriod={comparisonPeriod} category="revenue" />
+                  <DashboardCharts type="budget" />
                 </CardContent>
               </Card>
             </motion.div>
@@ -508,87 +448,27 @@ export function AnalysisDashboard() {
             >
               <Card>
                 <CardHeader>
-                  <CardTitle>Expenses by Category</CardTitle>
+                  <CardTitle>Supplier Statistics</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
-                  <AdvancedChart type="pie" metrics={metrics} comparisonPeriod={comparisonPeriod} category="expenses" />
+                  <DashboardCharts type="suppliers" />
                 </CardContent>
               </Card>
             </motion.div>
           </div>
         </TabsContent>
 
-        <TabsContent value="comparison" className="space-y-4">
+        <TabsContent value="metrics" className="space-y-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <Card>
               <CardHeader>
-                <CardTitle>Period Comparison</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <ComparisonChart metrics={metrics} comparisonPeriod={comparisonPeriod} />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Metrics Comparison</CardTitle>
+                <CardTitle>Business Metrics Analysis</CardTitle>
               </CardHeader>
               <CardContent>
                 <DataTable columns={columns} data={metrics} searchPlaceholder="Search metrics..." />
               </CardContent>
             </Card>
           </motion.div>
-        </TabsContent>
-
-        <TabsContent value="predictive" className="space-y-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Forecast</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <PredictiveChart metrics={metrics} category="revenue" periods={6} />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Expense Forecast</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <PredictiveChart metrics={metrics} category="expenses" periods={6} />
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profit Forecast</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <PredictiveChart metrics={metrics} category="profit" periods={6} />
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
         </TabsContent>
 
         <TabsContent value="kpis" className="space-y-4">

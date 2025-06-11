@@ -32,126 +32,136 @@ ChartJS.register(
 )
 
 interface DashboardChartsProps {
-  type: "financial" | "invoices" | "budget" | "suppliers"
+  type: "invoices" | "budget" | "suppliers"
 }
 
 export function DashboardCharts({ type }: DashboardChartsProps) {
   const [chartData, setChartData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const { invoices } = useStore()
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [budgets, setBudgets] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
 
   useEffect(() => {
-    // Simulate data loading
-    setLoading(true)
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [invoicesRes, budgetsRes, suppliersRes] = await Promise.all([
+          fetch('/api/invoices'),
+          fetch('/api/budgets'),
+          fetch('/api/suppliers')
+        ])
 
-    setTimeout(() => {
-      let data
+        const [invoiceData, budgetData, supplierData] = await Promise.all([
+          invoicesRes.json(),
+          budgetsRes.json(),
+          suppliersRes.json()
+        ])
 
-      if (type === "financial") {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+        setInvoices(invoiceData)
+        setBudgets(budgetData)
+        setSuppliers(supplierData)
 
-        data = {
-          labels: months,
-          datasets: [
-            {
-              label: "Revenue",
-              data: [95000, 100000, 110000, 115000, 120000, 125000],
-              borderColor: "rgba(59, 130, 246, 1)",
-              backgroundColor: "rgba(59, 130, 246, 0.1)",
-              tension: 0.4,
-              fill: true,
-            },
-            {
-              label: "Expenses",
-              data: [65000, 68000, 72000, 75000, 80000, 85000],
-              borderColor: "rgba(239, 68, 68, 1)",
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              tension: 0.4,
-              fill: true,
-            },
-            {
-              label: "Profit",
-              data: [30000, 32000, 38000, 40000, 40000, 40000],
-              borderColor: "rgba(34, 197, 94, 1)",
-              backgroundColor: "rgba(34, 197, 94, 0.1)",
-              tension: 0.4,
-              fill: true,
-            },
-          ],
-        }
-      } else if (type === "invoices") {
-        // Calculate invoice status totals
-        const paid = invoices.filter((i) => i.status === "paid").reduce((sum, i) => sum + i.amount, 0)
-        const pending = invoices.filter((i) => i.status === "pending").reduce((sum, i) => sum + i.amount, 0)
-        const overdue = invoices.filter((i) => i.status === "overdue").reduce((sum, i) => sum + i.amount, 0)
-        const draft = invoices.filter((i) => i.status === "draft").reduce((sum, i) => sum + i.amount, 0)
+        let data
 
-        data = {
-          labels: ["Paid", "Pending", "Overdue", "Draft"],
-          datasets: [
-            {
-              data: [paid, pending, overdue, draft],
-              backgroundColor: [
-                "rgba(34, 197, 94, 0.8)",
-                "rgba(234, 179, 8, 0.8)",
-                "rgba(239, 68, 68, 0.8)",
-                "rgba(107, 114, 128, 0.8)",
-              ],
-              borderColor: [
-                "rgba(34, 197, 94, 1)",
-                "rgba(234, 179, 8, 1)",
-                "rgba(239, 68, 68, 1)",
-                "rgba(107, 114, 128, 1)",
-              ],
-              borderWidth: 1,
-            },
-          ],
+        if (type === "invoices") {
+          // Calculate invoice status totals
+          const paid = invoiceData.filter((i: any) => i.status === "paid").reduce((sum: number, i: any) => sum + parseFloat(i.amount), 0)
+          const pending = invoiceData.filter((i: any) => i.status === "pending" || i.status === "unpaid").reduce((sum: number, i: any) => sum + parseFloat(i.amount), 0)
+          const overdue = invoiceData.filter((i: any) => {
+            const dueDate = new Date(i.due_date)
+            return dueDate < new Date() && i.status === 'unpaid'
+          }).reduce((sum: number, i: any) => sum + parseFloat(i.amount), 0)
+
+          data = {
+            labels: ["Paid", "Pending", "Overdue"],
+            datasets: [
+              {
+                data: [paid, pending, overdue],
+                backgroundColor: [
+                  "rgba(34, 197, 94, 0.8)",
+                  "rgba(234, 179, 8, 0.8)",
+                  "rgba(239, 68, 68, 0.8)"
+                ],
+                borderColor: [
+                  "rgba(34, 197, 94, 1)",
+                  "rgba(234, 179, 8, 1)",
+                  "rgba(239, 68, 68, 1)"
+                ],
+                borderWidth: 1,
+              },
+            ],
+          }
+        } else if (type === "budget") {
+          // Budget allocation by department/category
+          const budgetByCategory = budgetData.reduce((acc: any, budget: any) => {
+            const category = budget.name || 'Other'
+            const existingIndex = acc.findIndex((item: any) => item.category === category)
+            
+            if (existingIndex >= 0) {
+              acc[existingIndex].amount += parseFloat(budget.total_amount)
+            } else {
+              acc.push({
+                category,
+                amount: parseFloat(budget.total_amount)
+              })
+            }
+            return acc
+          }, [])
+
+          data = {
+            labels: budgetByCategory.map((item: any) => item.category),
+            datasets: [
+              {
+                label: "Budget Allocation",
+                data: budgetByCategory.map((item: any) => item.amount),
+                backgroundColor: [
+                  "rgba(59, 130, 246, 0.8)",
+                  "rgba(16, 185, 129, 0.8)",
+                  "rgba(139, 92, 246, 0.8)",
+                  "rgba(249, 115, 22, 0.8)",
+                  "rgba(236, 72, 153, 0.8)",
+                ],
+                borderWidth: 0,
+              },
+            ],
+          }
+        } else if (type === "suppliers") {
+          // Supplier statistics - active vs inactive
+          const activeSuppliers = supplierData.filter((s: any) => s.status === 'active').length
+          const inactiveSuppliers = supplierData.filter((s: any) => s.status === 'inactive').length
+
+          data = {
+            labels: ["Active", "Inactive"],
+            datasets: [
+              {
+                label: "Suppliers",
+                data: [activeSuppliers, inactiveSuppliers],
+                backgroundColor: ["rgba(34, 197, 94, 0.8)", "rgba(239, 68, 68, 0.8)"],
+                borderColor: ["rgba(34, 197, 94, 1)", "rgba(239, 68, 68, 1)"],
+                borderWidth: 1,
+                borderRadius: 4,
+              },
+            ],
+          }
         }
-      } else if (type === "budget") {
-        data = {
-          labels: ["Marketing", "Operations", "IT", "HR", "R&D"],
-          datasets: [
-            {
-              label: "Budget Allocation",
-              data: [25000, 35000, 20000, 10000, 10000],
-              backgroundColor: [
-                "rgba(59, 130, 246, 0.8)",
-                "rgba(16, 185, 129, 0.8)",
-                "rgba(139, 92, 246, 0.8)",
-                "rgba(249, 115, 22, 0.8)",
-                "rgba(236, 72, 153, 0.8)",
-              ],
-              borderWidth: 0,
-            },
-          ],
-        }
-      } else if (type === "suppliers") {
-        data = {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-          datasets: [
-            {
-              label: "New Suppliers",
-              data: [3, 5, 2, 4, 6, 3],
-              backgroundColor: "rgba(59, 130, 246, 0.8)",
-              borderColor: "rgba(59, 130, 246, 1)",
-              borderWidth: 1,
-              borderRadius: 4,
-            },
-          ],
-        }
+
+        setChartData(data)
+      } catch (error) {
+        console.error('Error fetching chart data:', error)      } finally {
+        setLoading(false)
       }
+    }
 
-      setChartData(data)
-      setLoading(false)
-    }, 500)
-  }, [type, invoices])
+    fetchData()
+  }, [type])
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: type === "financial" ? ("top" as const) : ("right" as const),
+        position: type === "suppliers" ? ("top" as const) : ("right" as const),
         display: type !== "invoices",
         labels: {
           boxWidth: 12,
@@ -172,15 +182,17 @@ export function DashboardCharts({ type }: DashboardChartsProps) {
           label: (context: any) => {
             const label = context.dataset.label || ""
             const value = context.raw || 0
-            return type !== "invoices"
-              ? `${label}: $${value.toLocaleString()}`
-              : `${context.label}: $${value.toLocaleString()} (${Math.round((value / context.chart.getDatasetMeta(0).total) * 100)}%)`
+            return type === "suppliers"
+              ? `${label}: ${value} suppliers`
+              : type === "invoices"
+              ? `${context.label}: $${value.toLocaleString()} (${Math.round((value / context.chart.getDatasetMeta(0).total) * 100)}%)`
+              : `${label}: $${value.toLocaleString()}`
           },
         },
       },
     },
     scales:
-      type === "financial" || type === "suppliers"
+      type === "suppliers"
         ? {
             x: {
               grid: {
@@ -190,8 +202,8 @@ export function DashboardCharts({ type }: DashboardChartsProps) {
             y: {
               beginAtZero: true,
               ticks: {
-                callback: (value: any) => `$${value.toLocaleString()}`,
-                stepSize: 20000,
+                callback: (value: any) => `${value}`,
+                stepSize: 1,
               },
               grid: {
                 color: "rgba(0, 0, 0, 0.05)",
@@ -218,10 +230,8 @@ export function DashboardCharts({ type }: DashboardChartsProps) {
       </div>
     )
   }
-
   return (
     <div className="h-full">
-      {type === "financial" && <Line data={chartData} options={options} />}
       {type === "invoices" && <Doughnut data={chartData} options={options} />}
       {type === "budget" && <Pie data={chartData} options={options} />}
       {type === "suppliers" && <Bar data={chartData} options={options} />}

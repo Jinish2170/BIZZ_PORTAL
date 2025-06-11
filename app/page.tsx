@@ -9,7 +9,6 @@ import { DashboardUpcomingPayments } from "@/components/dashboard/dashboard-upco
 import { DashboardBudgetSummary } from "@/components/dashboard/dashboard-budget-summary"
 import { DashboardSupplierStats } from "@/components/dashboard/dashboard-supplier-stats"
 import { ArrowRight } from "lucide-react"
-import { CashFlowTrends } from "@/components/dashboard/cash-flow-trends"
 import { KeyPerformanceIndicators } from "@/components/dashboard/key-performance-indicators"
 
 export default function Dashboard() {
@@ -128,10 +127,8 @@ export default function Dashboard() {
                 <DashboardBudgetSummary />
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </div>        </TabsContent>
       </Tabs>
-      <CashFlowTrends />
       <div className="h-4"></div>
       <KeyPerformanceIndicators />
     </div>

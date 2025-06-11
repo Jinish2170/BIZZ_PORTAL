@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Area,
   AreaChart,
@@ -14,26 +14,90 @@ import {
   YAxis,
 } from "recharts"
 import { useTheme } from "next-themes"
+import { Invoice, Budget } from "@/lib/store"
 
-// Sample data - in a real app, this would come from the store or API
-const data = [
-  { name: "Jan", revenue: 15000, expenses: 10000, profit: 5000 },
-  { name: "Feb", revenue: 18000, expenses: 12000, profit: 6000 },
-  { name: "Mar", revenue: 19000, expenses: 11500, profit: 7500 },
-  { name: "Apr", revenue: 22000, expenses: 13000, profit: 9000 },
-  { name: "May", revenue: 20000, expenses: 14000, profit: 6000 },
-  { name: "Jun", revenue: 25000, expenses: 15000, profit: 10000 },
-  { name: "Jul", revenue: 28000, expenses: 16000, profit: 12000 },
-  { name: "Aug", revenue: 30000, expenses: 18000, profit: 12000 },
-  { name: "Sep", revenue: 34000, expenses: 20000, profit: 14000 },
-  { name: "Oct", revenue: 32000, expenses: 19000, profit: 13000 },
-  { name: "Nov", revenue: 36000, expenses: 21000, profit: 15000 },
-  { name: "Dec", revenue: 38000, expenses: 22000, profit: 16000 },
-]
+interface PerformanceData {
+  name: string
+  revenue: number
+  expenses: number
+  profit: number
+}
 
 export function DashboardPerformance() {
   const { theme } = useTheme()
   const [chartType, setChartType] = useState<"area" | "bar">("area")
+  const [data, setData] = useState<PerformanceData[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [invoicesRes, budgetsRes] = await Promise.all([
+          fetch('/api/invoices'),
+          fetch('/api/budgets')
+        ])
+
+        const [invoices, budgets] = await Promise.all([
+          invoicesRes.json(),
+          budgetsRes.json()
+        ])
+
+        // Calculate monthly performance data
+        const monthlyData: PerformanceData[] = []
+        const currentDate = new Date()
+        
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
+          const monthName = date.toLocaleDateString('en', { month: 'short' })
+          
+          // Calculate revenue from paid invoices in this month
+          const monthRevenue = invoices
+            .filter((inv: Invoice) => {
+              const invoiceDate = new Date(inv.issue_date)
+              return invoiceDate.getMonth() === date.getMonth() && 
+                     invoiceDate.getFullYear() === date.getFullYear() &&
+                     inv.status === 'paid'
+            })
+            .reduce((sum: number, inv: Invoice) => sum + parseFloat(inv.amount.toString()), 0)
+
+          // Calculate expenses from budgets spent in this month  
+          const monthExpenses = budgets
+            .filter((budget: Budget) => {
+              const budgetDate = new Date(budget.created_at)
+              return budgetDate.getMonth() === date.getMonth() && 
+                     budgetDate.getFullYear() === date.getFullYear()
+            })
+            .reduce((sum: number, budget: Budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
+
+          const profit = monthRevenue - monthExpenses
+
+          monthlyData.push({
+            name: monthName,
+            revenue: Math.round(monthRevenue),
+            expenses: Math.round(monthExpenses), 
+            profit: Math.round(profit)
+          })
+        }
+
+        setData(monthlyData)
+      } catch (error) {
+        console.error('Error fetching performance data:', error)
+        // Fallback to sample data if API fails
+        setData([
+          { name: "Jan", revenue: 15000, expenses: 10000, profit: 5000 },
+          { name: "Feb", revenue: 18000, expenses: 12000, profit: 6000 },
+          { name: "Mar", revenue: 19000, expenses: 11500, profit: 7500 },
+          { name: "Apr", revenue: 22000, expenses: 13000, profit: 9000 },
+          { name: "May", revenue: 20000, expenses: 14000, profit: 6000 },
+          { name: "Jun", revenue: 25000, expenses: 15000, profit: 10000 },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Theme colors
   const colors = {
@@ -45,6 +109,14 @@ export function DashboardPerformance() {
   }
 
   const tooltipFormatter = (value: number) => [`$${value.toLocaleString()}`, undefined]
+
+  if (loading) {
+    return (
+      <div className="h-[340px] pt-4 flex items-center justify-center">
+        <div className="animate-pulse bg-gray-200 rounded w-full h-full"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-[340px] pt-4">
