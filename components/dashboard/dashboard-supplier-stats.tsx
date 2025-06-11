@@ -1,12 +1,44 @@
 "use client"
 
-import { useStore } from "@/lib/store"
+import { useEffect, useState } from "react"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { useTheme } from "next-themes"
+import { Supplier } from "@/lib/store"
 
 export function DashboardSupplierStats() {
-  const { suppliers } = useStore()
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [loading, setLoading] = useState(true)
   const { theme } = useTheme()
+
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      try {
+        const response = await fetch('/api/suppliers')
+        const data = await response.json()
+        setSuppliers(data)
+      } catch (error) {
+        console.error('Error fetching suppliers:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSuppliers()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="animate-pulse">
+          <div className="w-full h-48 bg-gray-200 rounded mb-4"></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="h-16 bg-gray-200 rounded"></div>
+            <div className="h-16 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Group suppliers by category
   const suppliersByCategory = suppliers.reduce(

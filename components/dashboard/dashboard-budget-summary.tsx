@@ -1,14 +1,45 @@
 "use client"
 
-import { useStore } from "@/lib/store"
+import { useEffect, useState } from "react"
 import { Progress } from "@/components/ui/progress"
+import { Budget } from "@/lib/store"
 
 export function DashboardBudgetSummary() {
-  const { budgets } = useStore()
+  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [loading, setLoading] = useState(true)
 
+  useEffect(() => {
+    const fetchBudgets = async () => {
+      try {
+        const response = await fetch('/api/budgets')
+        const data = await response.json()
+        setBudgets(data)
+      } catch (error) {
+        console.error('Error fetching budgets:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBudgets()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-2 bg-gray-200 rounded w-full mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        ))}
+      </div>
+    )
+  }
   // Calculate total budget and spent
-  const totalBudget = budgets.reduce((sum, budget) => sum + budget.totalAmount, 0)
-  const totalSpent = budgets.reduce((sum, budget) => sum + budget.spentAmount, 0)
+  const totalBudget = budgets.reduce((sum, budget) => sum + parseFloat(budget.total_amount.toString()), 0)
+  const totalSpent = budgets.reduce((sum, budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
   const totalRemainingPercentage = totalBudget > 0 ? ((totalBudget - totalSpent) / totalBudget) * 100 : 0
 
   // Group budgets by department
@@ -19,10 +50,8 @@ export function DashboardBudgetSummary() {
           total: 0,
           spent: 0,
         }
-      }
-
-      acc[budget.department].total += budget.totalAmount
-      acc[budget.department].spent += budget.spentAmount
+      }      acc[budget.department].total += parseFloat(budget.total_amount.toString())
+      acc[budget.department].spent += parseFloat(budget.spent_amount.toString())
 
       return acc
     },

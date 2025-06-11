@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
-import { DashboardMetrics } from "@/components/dashboard/dashboard-metrics"
+import { DashboardMetrics } from "@/components/dashboard/dashboard-metrics-api"
 import { DashboardPerformance } from "@/components/dashboard/dashboard-performance"
 import { DashboardTasks } from "@/components/dashboard/dashboard-tasks"
 import { DashboardUpcomingPayments } from "@/components/dashboard/dashboard-upcoming-payments"

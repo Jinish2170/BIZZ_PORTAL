@@ -32,7 +32,7 @@ interface Invoice {
   supplier_id: number;
   supplier_name?: string;
   amount: number;
-  status: "paid" | "pending" | "overdue" | "draft";
+  status: "paid" | "unpaid" | "overdue";
   issue_date: string;
   due_date: string;
   description: string;
@@ -77,18 +77,17 @@ export function InvoiceDashboard() {
 
     return true
   })
-
   // Calculate totals
-  const totalInvoiced = invoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+  const totalInvoiced = invoices.reduce((sum, invoice) => sum + parseFloat(invoice.amount.toString()), 0)
   const totalPaid = invoices
     .filter((invoice) => invoice.status === "paid")
-    .reduce((sum, invoice) => sum + invoice.amount, 0)
+    .reduce((sum, invoice) => sum + parseFloat(invoice.amount.toString()), 0)
   const totalPending = invoices
-    .filter((invoice) => invoice.status === "pending")
-    .reduce((sum, invoice) => sum + invoice.amount, 0)
+    .filter((invoice) => invoice.status === "unpaid")
+    .reduce((sum, invoice) => sum + parseFloat(invoice.amount.toString()), 0)
   const totalOverdue = invoices
     .filter((invoice) => invoice.status === "overdue")
-    .reduce((sum, invoice) => sum + invoice.amount, 0)
+    .reduce((sum, invoice) => sum + parseFloat(invoice.amount.toString()), 0)
 
   const columns: ColumnDef<Invoice>[] = [
     {
@@ -103,10 +102,9 @@ export function InvoiceDashboard() {
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => (
-        <div className="font-medium">
+      cell: ({ row }) => (        <div className="font-medium">
           $
-          {(row.getValue("amount") as number).toLocaleString(undefined, {
+          {parseFloat(row.getValue("amount") as string).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
@@ -127,12 +125,11 @@ export function InvoiceDashboard() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
 
-        return (
-          <Badge
+        return (          <Badge
             variant={
               status === "paid"
                 ? "success"
-                : status === "pending"
+                : status === "unpaid"
                   ? "warning"
                   : status === "overdue"
                     ? "destructive"
@@ -141,9 +138,8 @@ export function InvoiceDashboard() {
             className="capitalize"
           >
             {status === "paid" && <CheckCircle2 className="mr-1 h-3 w-3" />}
-            {status === "pending" && <Clock className="mr-1 h-3 w-3" />}
+            {status === "unpaid" && <Clock className="mr-1 h-3 w-3" />}
             {status === "overdue" && <AlertCircle className="mr-1 h-3 w-3" />}
-            {status === "draft" && <FileText className="mr-1 h-3 w-3" />}
             {status}
           </Badge>
         )
@@ -351,13 +347,11 @@ export function InvoiceDashboard() {
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
+              </SelectTrigger>              <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
                 <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>
             </Select>
           </CardContent>

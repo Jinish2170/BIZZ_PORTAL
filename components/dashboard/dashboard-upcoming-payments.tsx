@@ -1,12 +1,43 @@
 "use client"
 
-import { useStore } from "@/lib/store"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Invoice } from "@/lib/store"
 
 export function DashboardUpcomingPayments() {
-  const { invoices } = useStore()
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const response = await fetch('/api/invoices')
+        const data = await response.json()
+        setInvoices(data)
+      } catch (error) {
+        console.error('Error fetching invoices:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchInvoices()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   // Get today's date and 7 days from now
   const today = new Date()
@@ -16,10 +47,10 @@ export function DashboardUpcomingPayments() {
   // Filter upcoming payments (due within the next 7 days)
   const upcomingPayments = invoices
     .filter((invoice) => {
-      const dueDate = new Date(invoice.dueDate)
-      return (invoice.status === "pending" || invoice.status === "overdue") && dueDate >= today && dueDate <= nextWeek
+      const dueDate = new Date(invoice.due_date)
+      return (invoice.status === "unpaid" || invoice.status === "overdue") && dueDate >= today && dueDate <= nextWeek
     })
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
 
   // Function to format a date to a string like "28 Apr" or "Today", "Tomorrow"
   const formatDate = (dateString: string) => {
@@ -67,26 +98,25 @@ export function DashboardUpcomingPayments() {
           <div className="col-span-2">Invoice</div>
           <div className="text-right">Amount</div>
           <div className="text-right">Due Date</div>
-        </div>
-        <div className="divide-y">
+        </div>        <div className="divide-y">
           {upcomingPayments.map((invoice) => (
             <div key={invoice.id} className="grid grid-cols-4 items-center p-3">
               <div className="col-span-2">
-                <div className="font-medium">{invoice.client}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{invoice.invoiceNumber}</div>
+                <div className="font-medium">{invoice.supplier_name || `Supplier ${invoice.supplier_id}`}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Invoice #{invoice.id}</div>
               </div>
-              <div className="text-right font-medium">${invoice.amount.toLocaleString()}</div>
+              <div className="text-right font-medium">${parseFloat(invoice.amount.toString()).toLocaleString()}</div>
               <div className="flex justify-end items-center">
                 <Badge
                   variant={
                     invoice.status === "overdue"
                       ? "destructive"
-                      : formatDate(invoice.dueDate) === "Today"
+                      : formatDate(invoice.due_date) === "Today"
                         ? "warning"
                         : "outline"
                   }
                 >
-                  {formatDate(invoice.dueDate)}
+                  {formatDate(invoice.due_date)}
                 </Badge>
               </div>
             </div>

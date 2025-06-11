@@ -1,152 +1,191 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react"
+import { Invoice, Budget, Supplier, Document } from "@/lib/store"
 
-// Sample KPI data - in a real app, this would come from an API or store
-const kpis = {
-  financial: [
-    {
-      name: "Revenue Growth",
-      target: 15,
-      actual: 13.64,
-      unit: "%",
-      trend: "up",
-      status: "warning", // warning because below target
-    },
-    {
-      name: "Profit Margin",
-      target: 30,
-      actual: 32,
-      unit: "%",
-      trend: "up",
-      status: "success", // success because above target
-    },
-    {
-      name: "Operating Expenses",
-      target: 70000,
-      actual: 68000,
-      unit: "$",
-      trend: "down",
-      status: "success", // success because below target (for expenses, lower is better)
-    },
-    {
-      name: "Cash Flow",
-      target: 50000,
-      actual: 45000,
-      unit: "$",
-      trend: "down",
-      status: "warning", // warning because below target
-    },
-  ],
-  marketing: [
-    {
-      name: "Customer Acquisition Cost",
-      target: 200,
-      actual: 250,
-      unit: "$",
-      trend: "up",
-      status: "danger", // danger because above target (for CAC, lower is better)
-    },
-    {
-      name: "Marketing ROI",
-      target: 3.5,
-      actual: 3.2,
-      unit: "x",
-      trend: "up",
-      status: "warning", // warning because below target
-    },
-    {
-      name: "Conversion Rate",
-      target: 3.5,
-      actual: 3.8,
-      unit: "%",
-      trend: "up",
-      status: "success", // success because above target
-    },
-    {
-      name: "Social Media Engagement",
-      target: 15000,
-      actual: 16200,
-      unit: "",
-      trend: "up",
-      status: "success", // success because above target
-    },
-  ],
-  operations: [
-    {
-      name: "Inventory Turnover",
-      target: 6,
-      actual: 5.8,
-      unit: "x",
-      trend: "up",
-      status: "warning", // warning because below target
-    },
-    {
-      name: "Order Fulfillment Time",
-      target: 2,
-      actual: 1.8,
-      unit: "days",
-      trend: "down",
-      status: "success", // success because below target (for time, lower is better)
-    },
-    {
-      name: "Supplier On-Time Delivery",
-      target: 95,
-      actual: 92,
-      unit: "%",
-      trend: "down",
-      status: "warning", // warning because below target
-    },
-    {
-      name: "Quality Control Pass Rate",
-      target: 98,
-      actual: 99.2,
-      unit: "%",
-      trend: "up",
-      status: "success", // success because above target
-    },
-  ],
-  sales: [
-    {
-      name: "Sales Growth",
-      target: 12,
-      actual: 14.5,
-      unit: "%",
-      trend: "up",
-      status: "success", // success because above target
-    },
-    {
-      name: "Average Order Value",
-      target: 1200,
-      actual: 1250,
-      unit: "$",
-      trend: "up",
-      status: "success", // success because above target
-    },
-    {
-      name: "Customer Retention Rate",
-      target: 85,
-      actual: 82,
-      unit: "%",
-      trend: "down",
-      status: "warning", // warning because below target
-    },
-    {
-      name: "Sales Cycle Length",
-      target: 30,
-      actual: 32,
-      unit: "days",
-      trend: "up",
-      status: "warning", // warning because above target (for cycle length, lower is better)
-    },
-  ],
+interface KPI {
+  name: string
+  target: number
+  actual: number
+  unit: string
+  trend: "up" | "down" | "neutral"
+  status: "success" | "warning" | "danger"
 }
 
 export function KeyPerformanceIndicators() {
+  const [kpis, setKpis] = useState<{
+    financial: KPI[]
+    operational: KPI[]
+    suppliers: KPI[]
+  }>({
+    financial: [],
+    operational: [],
+    suppliers: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [invoicesRes, budgetsRes, suppliersRes, documentsRes] = await Promise.all([
+          fetch('/api/invoices'),
+          fetch('/api/budgets'),
+          fetch('/api/suppliers'),
+          fetch('/api/documents')
+        ])
+
+        const [invoices, budgets, suppliers, documents] = await Promise.all([
+          invoicesRes.json(),
+          budgetsRes.json(),
+          suppliersRes.json(),
+          documentsRes.json()
+        ])
+
+        // Calculate financial KPIs
+        const totalRevenue = invoices.reduce((sum: number, inv: Invoice) => 
+          sum + parseFloat(inv.amount.toString()), 0)
+        const totalPaid = invoices
+          .filter((inv: Invoice) => inv.status === 'paid')
+          .reduce((sum: number, inv: Invoice) => sum + parseFloat(inv.amount.toString()), 0)
+        const totalExpenses = budgets.reduce((sum: number, budget: Budget) => 
+          sum + parseFloat(budget.spent_amount.toString()), 0)
+        const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0
+
+        // Calculate operational KPIs
+        const activeSuppliers = suppliers.filter((s: Supplier) => s.status === 'active').length
+        const totalSuppliers = suppliers.length
+        const supplierActiveRate = totalSuppliers > 0 ? (activeSuppliers / totalSuppliers) * 100 : 0
+
+        const overdueInvoices = invoices.filter((inv: Invoice) => {
+          const dueDate = new Date(inv.due_date)
+          return dueDate < new Date() && inv.status === 'unpaid'
+        }).length
+        const onTimePaymentRate = invoices.length > 0 ? 
+          ((invoices.length - overdueInvoices) / invoices.length) * 100 : 100
+
+        // Calculate budget utilization
+        const totalBudget = budgets.reduce((sum: number, budget: Budget) => 
+          sum + parseFloat(budget.total_amount.toString()), 0)
+        const budgetUtilization = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0
+
+        const financialKPIs: KPI[] = [
+          {
+            name: "Total Revenue",
+            target: 100000,
+            actual: totalRevenue,
+            unit: "$",
+            trend: totalRevenue > 80000 ? "up" : "down",
+            status: totalRevenue > 80000 ? "success" : "warning"
+          },
+          {
+            name: "Profit Margin",
+            target: 25,
+            actual: profitMargin,
+            unit: "%",
+            trend: profitMargin > 20 ? "up" : "down",
+            status: profitMargin > 20 ? "success" : profitMargin > 10 ? "warning" : "danger"
+          },
+          {
+            name: "Collection Rate",
+            target: 95,
+            actual: totalRevenue > 0 ? (totalPaid / totalRevenue) * 100 : 0,
+            unit: "%",
+            trend: "up",
+            status: "success"
+          }
+        ]
+
+        const operationalKPIs: KPI[] = [
+          {
+            name: "Budget Utilization",
+            target: 85,
+            actual: budgetUtilization,
+            unit: "%",
+            trend: budgetUtilization < 90 ? "neutral" : "up",
+            status: budgetUtilization < 90 ? "success" : budgetUtilization < 95 ? "warning" : "danger"
+          },
+          {
+            name: "On-time Payment Rate",
+            target: 95,
+            actual: onTimePaymentRate,
+            unit: "%",
+            trend: onTimePaymentRate > 90 ? "up" : "down",
+            status: onTimePaymentRate > 90 ? "success" : onTimePaymentRate > 80 ? "warning" : "danger"
+          },
+          {
+            name: "Document Processing",
+            target: 50,
+            actual: documents.length,
+            unit: "",
+            trend: "up",
+            status: documents.length > 30 ? "success" : "warning"
+          }
+        ]
+
+        const supplierKPIs: KPI[] = [
+          {
+            name: "Active Suppliers",
+            target: 90,
+            actual: supplierActiveRate,
+            unit: "%",
+            trend: supplierActiveRate > 85 ? "up" : "down",
+            status: supplierActiveRate > 85 ? "success" : "warning"
+          },          {
+            name: "Total Suppliers",
+            target: 20,
+            actual: totalSuppliers,
+            unit: "",
+            trend: "up",
+            status: totalSuppliers > 15 ? "success" : "warning"
+          }
+        ]
+
+        setKpis({
+          financial: financialKPIs,
+          operational: operationalKPIs,
+          suppliers: supplierKPIs
+        })
+      } catch (error) {
+        console.error('Error fetching KPI data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle>Key Performance Indicators</CardTitle>
+          <CardDescription>Track your business KPIs against targets</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-2 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const getProgressColor = (status: string) => {
     switch (status) {
       case "success":
@@ -160,7 +199,7 @@ export function KeyPerformanceIndicators() {
     }
   }
 
-  const getProgressValue = (kpi: any) => {
+  const getProgressValue = (kpi: KPI) => {
     // For metrics where lower is better (like expenses, CAC, etc.)
     const lowerIsBetter = [
       "Operating Expenses",
@@ -190,7 +229,7 @@ export function KeyPerformanceIndicators() {
     if (unit === "$") {
       return `$${value.toLocaleString()}`
     } else if (unit === "%" || unit === "x") {
-      return `${value}${unit}`
+      return `${value.toFixed(1)}${unit}`
     } else if (unit === "days") {
       return `${value} days`
     } else {
@@ -198,6 +237,31 @@ export function KeyPerformanceIndicators() {
     }
   }
 
+  if (loading) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle>Key Performance Indicators</CardTitle>
+          <CardDescription>Track your business KPIs against targets</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-2 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
   return (
     <Card className="col-span-full">
       <CardHeader>
@@ -206,53 +270,128 @@ export function KeyPerformanceIndicators() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="financial">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="financial">Financial</TabsTrigger>
-            <TabsTrigger value="marketing">Marketing</TabsTrigger>
-            <TabsTrigger value="operations">Operations</TabsTrigger>
-            <TabsTrigger value="sales">Sales</TabsTrigger>
+            <TabsTrigger value="operational">Operational</TabsTrigger>
+            <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
-          {Object.entries(kpis).map(([category, categoryKpis]) => (
-            <TabsContent key={category} value={category} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {categoryKpis.map((kpi, index) => (
-                  <Card key={index} className="overflow-hidden">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-medium">{kpi.name}</h3>
-                        <Badge variant={kpi.status as any} className="flex items-center gap-1">
-                          {kpi.trend === "up" ? (
-                            <ArrowUpRight className="h-3 w-3" />
-                          ) : kpi.trend === "down" ? (
-                            <ArrowDownRight className="h-3 w-3" />
-                          ) : (
-                            <Minus className="h-3 w-3" />
-                          )}
-                          {kpi.status}
-                        </Badge>
-                      </div>
+          <TabsContent value="financial" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {kpis.financial.map((kpi, index) => (
+                <Card key={index} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-medium">{kpi.name}</h3>
+                      <Badge variant={kpi.status === 'success' ? 'default' : kpi.status === 'warning' ? 'secondary' : 'destructive'} className="flex items-center gap-1">
+                        {kpi.trend === "up" ? (
+                          <ArrowUpRight className="h-3 w-3" />
+                        ) : kpi.trend === "down" ? (
+                          <ArrowDownRight className="h-3 w-3" />
+                        ) : (
+                          <Minus className="h-3 w-3" />
+                        )}
+                        {kpi.status}
+                      </Badge>
+                    </div>
 
-                      <div className="flex justify-between items-center text-sm mb-1">
-                        <span>Target: {formatValue(kpi.target, kpi.unit)}</span>
-                        <span>Actual: {formatValue(kpi.actual, kpi.unit)}</span>
-                      </div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span>Target: {formatValue(kpi.target, kpi.unit)}</span>
+                      <span>Actual: {formatValue(kpi.actual, kpi.unit)}</span>
+                    </div>
 
-                      <Progress
-                        value={getProgressValue(kpi)}
-                        className="h-2"
-                        indicatorClassName={getProgressColor(kpi.status)}
-                      />
+                    <Progress
+                      value={getProgressValue(kpi)}
+                      className="h-2"
+                      indicatorClassName={getProgressColor(kpi.status)}
+                    />
 
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {getProgressValue(kpi).toFixed(0)}% of target
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          ))}
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {getProgressValue(kpi).toFixed(0)}% of target
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="operational" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {kpis.operational.map((kpi, index) => (
+                <Card key={index} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-medium">{kpi.name}</h3>
+                      <Badge variant={kpi.status === 'success' ? 'default' : kpi.status === 'warning' ? 'secondary' : 'destructive'} className="flex items-center gap-1">
+                        {kpi.trend === "up" ? (
+                          <ArrowUpRight className="h-3 w-3" />
+                        ) : kpi.trend === "down" ? (
+                          <ArrowDownRight className="h-3 w-3" />
+                        ) : (
+                          <Minus className="h-3 w-3" />
+                        )}
+                        {kpi.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span>Target: {formatValue(kpi.target, kpi.unit)}</span>
+                      <span>Actual: {formatValue(kpi.actual, kpi.unit)}</span>
+                    </div>
+
+                    <Progress
+                      value={getProgressValue(kpi)}
+                      className="h-2"
+                      indicatorClassName={getProgressColor(kpi.status)}
+                    />
+
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {getProgressValue(kpi).toFixed(0)}% of target
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="suppliers" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {kpis.suppliers.map((kpi, index) => (
+                <Card key={index} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-medium">{kpi.name}</h3>
+                      <Badge variant={kpi.status === 'success' ? 'default' : kpi.status === 'warning' ? 'secondary' : 'destructive'} className="flex items-center gap-1">
+                        {kpi.trend === "up" ? (
+                          <ArrowUpRight className="h-3 w-3" />
+                        ) : kpi.trend === "down" ? (
+                          <ArrowDownRight className="h-3 w-3" />
+                        ) : (
+                          <Minus className="h-3 w-3" />
+                        )}
+                        {kpi.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span>Target: {formatValue(kpi.target, kpi.unit)}</span>
+                      <span>Actual: {formatValue(kpi.actual, kpi.unit)}</span>
+                    </div>
+
+                    <Progress
+                      value={getProgressValue(kpi)}
+                      className="h-2"
+                      indicatorClassName={getProgressColor(kpi.status)}
+                    />
+
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {getProgressValue(kpi).toFixed(0)}% of target
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>

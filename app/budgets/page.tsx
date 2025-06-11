@@ -172,13 +172,12 @@ export default function BudgetsPage() {
       })
     }
   }
-
   const openEditDialog = (budget: Budget) => {
     setCurrentBudget(budget)
     setFormData({
       name: budget.name,
-      total_amount: budget.total_amount,
-      spent_amount: budget.spent_amount,
+      total_amount: parseFloat(budget.total_amount.toString()),
+      spent_amount: parseFloat(budget.spent_amount.toString()),
       department: budget.department,
     })
     setIsEditDialogOpen(true)
@@ -213,19 +212,18 @@ export default function BudgetsPage() {
     {
       accessorKey: "total_amount",
       header: "Total Amount",
-      cell: ({ row }) => <div>${(row.getValue("total_amount") as number).toLocaleString()}</div>,
+      cell: ({ row }) => <div>${parseFloat(row.getValue("total_amount") as string).toLocaleString()}</div>,
     },
     {
       accessorKey: "spent_amount",
       header: "Spent Amount",
-      cell: ({ row }) => <div>${(row.getValue("spent_amount") as number).toLocaleString()}</div>,
+      cell: ({ row }) => <div>${parseFloat(row.getValue("spent_amount") as string).toLocaleString()}</div>,
     },
     {
       id: "progress",
       header: "Progress",
-      cell: ({ row }) => {
-        const total = row.getValue("total_amount") as number
-        const spent = row.getValue("spent_amount") as number
+      cell: ({ row }) => {        const total = parseFloat(row.getValue("total_amount") as string)
+        const spent = parseFloat(row.getValue("spent_amount") as string)
         const progress = calculateProgress(spent, total)
         const status = getBudgetStatus(spent, total)
 
