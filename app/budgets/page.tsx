@@ -242,14 +242,15 @@ export default function BudgetsPage() {
           </div>
         )
       },
-    },
-    {
+    },    {
       id: "remaining",
       header: "Remaining",
       cell: ({ row }) => {
-        const total = row.getValue("total_amount") as number
-        const spent = row.getValue("spent_amount") as number
-        const remaining = total - spent
+        const totalRaw = row.getValue("total_amount") as string | number
+        const spentRaw = row.getValue("spent_amount") as string | number
+        const total = typeof totalRaw === 'string' ? parseFloat(totalRaw) : totalRaw
+        const spent = typeof spentRaw === 'string' ? parseFloat(spentRaw) : spentRaw
+        const remaining = (isNaN(total) ? 0 : total) - (isNaN(spent) ? 0 : spent)
 
         return <div className="font-medium">${remaining.toLocaleString()}</div>
       },
@@ -300,17 +301,23 @@ export default function BudgetsPage() {
       },
     },
   ]
-
   // Calculate summary statistics
-  const totalBudgetAmount = budgets.reduce((sum, budget) => sum + budget.total_amount, 0)
-  const totalSpentAmount = budgets.reduce((sum, budget) => sum + budget.spent_amount, 0)
+  const totalBudgetAmount = budgets.reduce((sum, budget) => {
+    const amount = typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
+    return sum + (isNaN(amount) ? 0 : amount)
+  }, 0)
+  const totalSpentAmount = budgets.reduce((sum, budget) => {
+    const amount = typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
+    return sum + (isNaN(amount) ? 0 : amount)
+  }, 0)
   const totalRemainingAmount = totalBudgetAmount - totalSpentAmount
   const overallProgress = totalBudgetAmount > 0 ? Math.round((totalSpentAmount / totalBudgetAmount) * 100) : 0
 
   // Group budgets by department
   const budgetsByDepartment = budgets.reduce(
     (acc, budget) => {
-      acc[budget.department] = (acc[budget.department] || 0) + budget.total_amount
+      const amount = typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
+      acc[budget.department] = (acc[budget.department] || 0) + (isNaN(amount) ? 0 : amount)
       return acc
     },
     {} as Record<string, number>,
@@ -473,10 +480,12 @@ export default function BudgetsPage() {
                 </div>
 
                 {/* Department-specific progress bars */}
-                {Object.entries(budgetsByDepartment).map(([department, amount], index) => {
-                  const spent = budgets
+                {Object.entries(budgetsByDepartment).map(([department, amount], index) => {                  const spent = budgets
                     .filter((b) => b.department === department)
-                    .reduce((sum, b) => sum + b.spent_amount, 0)
+                    .reduce((sum, b) => {
+                      const amount = typeof b.spent_amount === 'string' ? parseFloat(b.spent_amount) : b.spent_amount
+                      return sum + (isNaN(amount) ? 0 : amount)
+                    }, 0)
                   const progress = amount > 0 ? Math.round((spent / amount) * 100) : 0
 
                   return (

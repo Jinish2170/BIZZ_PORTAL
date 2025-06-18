@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ArrowUpRight, ArrowDownRight, DollarSign, FileText, Users, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Budget, Invoice, Supplier, Document } from "@/lib/store"
+import { StatsCard } from "@/components/dashboard/stats-card"
 
 export function DashboardMetrics() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -58,7 +59,10 @@ export function DashboardMetrics() {
   }
   // Calculate key metrics
   const totalRevenue = invoices.reduce((sum, inv) => sum + parseFloat(inv.amount.toString()), 0)
-  const totalExpenses = budgets.reduce((sum, budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
+  const totalExpenses = budgets.reduce((sum, budget) => {
+    const amount = typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
+    return sum + (isNaN(amount) ? 0 : amount)
+  }, 0)
   const totalProfit = totalRevenue - totalExpenses
   const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
 
@@ -80,60 +84,42 @@ export function DashboardMetrics() {
       value: `$${totalRevenue.toLocaleString()}`,
       change: revenueChange,
       icon: DollarSign,
-      trend: revenueChange >= 0 ? "up" : "down",
+      trend: (revenueChange >= 0 ? "up" : "down") as "up" | "down",
     },
     {
       title: "Active Suppliers",
       value: activeSuppliers.toString(),
       change: suppliersChange,
       icon: Users,
-      trend: suppliersChange >= 0 ? "up" : "down",
+      trend: (suppliersChange >= 0 ? "up" : "down") as "up" | "down",
     },
     {
       title: "Profit Margin",
       value: `${profitMargin.toFixed(1)}%`,
       change: 4.2, // Demo value
       icon: Wallet,
-      trend: "up",
+      trend: "up" as const,
     },
     {
       title: "Documents",
       value: documentsCount.toString(),
       change: documentsChange,
       icon: FileText,
-      trend: documentsChange >= 0 ? "up" : "down",
-    },
+      trend: (documentsChange >= 0 ? "up" : "down") as "up" | "down",    },
   ]
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {metrics.map((metric) => {
         const Icon = metric.icon
-        const isPositive = metric.change >= 0
         return (
-          <div
+          <StatsCard
             key={metric.title}
-            className="rounded-lg border bg-card text-card-foreground shadow-sm p-6"
-          >
-            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <p className="text-sm font-medium">{metric.title}</p>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{metric.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {isPositive ? (
-                  <ArrowUpRight className="mr-1 h-4 w-4 text-green-500" />
-                ) : (
-                  <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
-                )}
-                <span className={cn(isPositive ? "text-green-500" : "text-red-500")}>
-                  {Math.abs(metric.change).toFixed(1)}%
-                </span>
-                <span className="ml-1">from last month</span>
-              </div>
-            </div>
-          </div>
+            title={metric.title}
+            value={metric.value}
+            description={`${metric.change >= 0 ? '+' : ''}${metric.change.toFixed(1)}% from last month`}
+            trend={metric.trend}
+          />
         )
       })}
     </div>

@@ -36,10 +36,15 @@ export function DashboardBudgetSummary() {
         ))}
       </div>
     )
-  }
-  // Calculate total budget and spent
-  const totalBudget = budgets.reduce((sum, budget) => sum + parseFloat(budget.total_amount.toString()), 0)
-  const totalSpent = budgets.reduce((sum, budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
+  }  // Calculate total budget and spent
+  const totalBudget = budgets.reduce((sum, budget) => {
+    const amount = typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
+    return sum + (isNaN(amount) ? 0 : amount)
+  }, 0)
+  const totalSpent = budgets.reduce((sum, budget) => {
+    const amount = typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
+    return sum + (isNaN(amount) ? 0 : amount)
+  }, 0)
   const totalRemainingPercentage = totalBudget > 0 ? ((totalBudget - totalSpent) / totalBudget) * 100 : 0
 
   // Group budgets by department
@@ -50,8 +55,8 @@ export function DashboardBudgetSummary() {
           total: 0,
           spent: 0,
         }
-      }      acc[budget.department].total += parseFloat(budget.total_amount.toString())
-      acc[budget.department].spent += parseFloat(budget.spent_amount.toString())
+      }      acc[budget.department].total += typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
+      acc[budget.department].spent += typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
 
       return acc
     },

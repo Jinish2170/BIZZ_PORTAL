@@ -75,9 +75,14 @@ export default function AnalyticsPage() {
   }, [toast])
 
   // Calculate analytics based on real data
-  const calculateAnalytics = () => {
-    const totalBudget = data.budgets.reduce((sum, budget) => sum + parseFloat(budget.total_amount.toString()), 0)
-    const totalSpent = data.budgets.reduce((sum, budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
+  const calculateAnalytics = () => {    const totalBudget = data.budgets.reduce((sum, budget) => {
+      const amount = typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
+      return sum + (isNaN(amount) ? 0 : amount)
+    }, 0)
+    const totalSpent = data.budgets.reduce((sum, budget) => {
+      const amount = typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
+      return sum + (isNaN(amount) ? 0 : amount)
+    }, 0)
     const totalRevenue = data.invoices.reduce((sum, invoice) => sum + parseFloat(invoice.amount.toString()), 0)
     
     // Calculate supplier performance scores based on invoice payment status
@@ -100,7 +105,7 @@ export default function AnalyticsPage() {
       if (!acc[category]) {
         acc[category] = 0
       }
-      acc[category] += parseFloat(budget.total_amount.toString())
+      acc[category] += typeof budget.total_amount === 'string' ? parseFloat(budget.total_amount) : budget.total_amount
       return acc
     }, {} as Record<string, number>)
 

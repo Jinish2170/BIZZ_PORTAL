@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Download, TrendingUp, BarChart2, PieChart, LineChart, ArrowUpRight, ArrowDownRight, Zap } from "lucide-react"
+import { Download, TrendingUp, ArrowUpRight, ArrowDownRight, Zap } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { DataTable } from "@/components/data-table"
@@ -42,13 +42,16 @@ export function AnalysisDashboard() {
     invoices: [],
     budgets: [],
     suppliers: [],
-    documents: []  })
+    documents: []
+  })
   const [metrics, setMetrics] = useState<AnalysisMetric[]>([])
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   })
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["revenue", "expenses", "profit"])
+  const [comparisonPeriod, setComparisonPeriod] = useState("previous_period")
+  const [chartType, setChartType] = useState("bar")
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,7 +92,10 @@ export function AnalysisDashboard() {
   const calculateMetrics = (invoices: Invoice[], budgets: Budget[], suppliers: Supplier[], documents: Document[]): AnalysisMetric[] => {
     // Calculate current period metrics
     const totalRevenue = invoices.reduce((sum, inv) => sum + parseFloat(inv.amount.toString()), 0)
-    const totalExpenses = budgets.reduce((sum, budget) => sum + parseFloat(budget.spent_amount.toString()), 0)
+    const totalExpenses = budgets.reduce((sum, budget) => {
+      const amount = typeof budget.spent_amount === 'string' ? parseFloat(budget.spent_amount) : budget.spent_amount
+      return sum + (isNaN(amount) ? 0 : amount)
+    }, 0)
     const netProfit = totalRevenue - totalExpenses
     const supplierCosts = suppliers.filter(s => s.status === 'active').length * 1000 // Estimate
     const avgOrderValue = invoices.length > 0 ? totalRevenue / invoices.length : 0
@@ -114,8 +120,15 @@ export function AnalysisDashboard() {
     // Calculate additional metrics
     const activeSupplierRate = suppliers.length > 0 ? (suppliers.filter(s => s.status === 'active').length / suppliers.length) * 100 : 0
     const paymentSuccessRate = invoices.length > 0 ? (invoices.filter(inv => inv.status === 'paid').length / invoices.length) * 100 : 0
-    const budgetUtilization = budgets.reduce((sum, b) => sum + parseFloat(b.total_amount.toString()), 0) > 0 
-      ? (totalExpenses / budgets.reduce((sum, b) => sum + parseFloat(b.total_amount.toString()), 0)) * 100 
+    
+    const budgetUtilization = budgets.reduce((sum, b) => {
+      const amount = typeof b.total_amount === 'string' ? parseFloat(b.total_amount) : b.total_amount
+      return sum + (isNaN(amount) ? 0 : amount)
+    }, 0) > 0 
+      ? (totalExpenses / budgets.reduce((sum, b) => {
+          const amount = typeof b.total_amount === 'string' ? parseFloat(b.total_amount) : b.total_amount
+          return sum + (isNaN(amount) ? 0 : amount)
+        }, 0)) * 100 
       : 0
 
     return [
@@ -345,7 +358,9 @@ export function AnalysisDashboard() {
             </Button>
           </div>
         </div>
-      </div>      <div className="flex flex-col md:flex-row gap-4">
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
         <Card className="w-full md:w-auto md:flex-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Date Range</CardTitle>
@@ -380,7 +395,26 @@ export function AnalysisDashboard() {
             </Select>
           </CardContent>
         </Card>
-      </div><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+
+        <Card className="w-full md:w-auto md:flex-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={comparisonPeriod} onValueChange={setComparisonPeriod}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="previous_period">Previous Period</SelectItem>
+                <SelectItem value="previous_year">Previous Year</SelectItem>
+                <SelectItem value="budget">Budget</SelectItem>
+                <SelectItem value="forecast">Forecast</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      </div>      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <DataCard
           title="Total Revenue"
           value={`$${revenueMetric?.value.toLocaleString() || '0'}`}
@@ -408,12 +442,14 @@ export function AnalysisDashboard() {
           trend={{ value: profitMargin > 20 ? 10 : -5, label: "vs previous period" }}
           variant="info"
         />
-      </div>      <Tabs defaultValue="charts">
+      </div><Tabs defaultValue="charts">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="charts">Charts</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
           <TabsTrigger value="kpis">KPIs</TabsTrigger>
-        </TabsList>        <TabsContent value="charts" className="space-y-4">
+        </TabsList>
+
+        <TabsContent value="charts" className="space-y-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <Card>
               <CardHeader>
