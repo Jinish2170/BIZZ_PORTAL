@@ -30,14 +30,6 @@ import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import {
-  PageContainer,
-  PageHeader,
-  PageHeaderHeading,
-  PageHeaderDescription,
-  PageActions,
-  PageContent,
-} from "@/components/layout/page-container"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -320,17 +312,16 @@ export default function BudgetsPage() {
       acc[budget.department] = (acc[budget.department] || 0) + (isNaN(amount) ? 0 : amount)
       return acc
     },
-    {} as Record<string, number>,
-  )
-
+    {} as Record<string, number>,  )
   return (
-    <PageContainer>
-      <PageHeader>
-        <div>
-          <PageHeaderHeading>Budgets</PageHeaderHeading>
-          <PageHeaderDescription>Manage your budget allocations and track spending</PageHeaderDescription>
-        </div>
-        <PageActions>
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
+            <p className="text-muted-foreground">Manage your budget allocations and track spending</p>
+          </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -407,14 +398,13 @@ export default function BudgetsPage() {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddBudget}>Save</Button>
-              </DialogFooter>
+                <Button onClick={handleAddBudget}>Save</Button>              </DialogFooter>
             </DialogContent>
           </Dialog>
-        </PageActions>
-      </PageHeader>
+        </div>
+      </div>
 
-      <PageContent>
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
@@ -535,12 +525,11 @@ export default function BudgetsPage() {
                 Filter
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
+          </CardHeader>          <CardContent className="p-0">
             <DataTable columns={columns} data={budgets} searchPlaceholder="Search budgets..." />
           </CardContent>
         </Card>
-      </PageContent>
+      </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
@@ -607,10 +596,9 @@ export default function BudgetsPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEditBudget}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
+            <Button onClick={handleEditBudget}>Save Changes</Button>          </DialogFooter>        </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

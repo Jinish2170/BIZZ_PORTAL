@@ -14,11 +14,12 @@ import { KeyPerformanceIndicators } from "@/components/dashboard/key-performance
 
 export default function Dashboard() {
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to BizzPortal, your business management platform</p>
-      </div>
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome to BizzPortal, your business management platform</p>
+        </div>
 
       <DashboardMetrics />
 
@@ -130,10 +131,10 @@ export default function Dashboard() {
             </Card>
           </div>
         </TabsContent>
-      </Tabs>
-      <CashFlowTrends />
+      </Tabs>      <CashFlowTrends />
       <div className="h-4"></div>
       <KeyPerformanceIndicators />
+      </div>
     </div>
   )
 }

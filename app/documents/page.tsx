@@ -27,13 +27,6 @@ import { z } from "zod"
 import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import {
-  PageContainer,
-  PageHeader,
-  PageHeaderHeading,
-  PageHeaderDescription,
-  PageContent,
-} from "@/components/layout/page-container"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Document {
@@ -238,22 +231,22 @@ export default function DocumentsPage() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
-        )
+          </div>        )
       },
     },
   ]
 
   return (
-    <PageContainer>
-      <PageHeader>
-        <div>
-          <PageHeaderHeading>Documents</PageHeaderHeading>
-          <PageHeaderDescription>Manage your documents and files</PageHeaderDescription>
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
+            <p className="text-muted-foreground">Manage your documents and files</p>
+          </div>
         </div>
-      </PageHeader>
 
-      <PageContent>
+      <div className="space-y-6">
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Upload Document</CardTitle>
@@ -302,11 +295,10 @@ export default function DocumentsPage() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <DataTable columns={columns} data={documents} searchPlaceholder="Search documents..." />
+          <CardContent className="p-0">            <DataTable columns={columns} data={documents} searchPlaceholder="Search documents..." />
           </CardContent>
         </Card>
-      </PageContent>
+      </div>
 
       <Dialog open={!!previewDocument} onOpenChange={() => setPreviewDocument(null)}>
         <DialogContent className="max-w-3xl">
@@ -335,9 +327,8 @@ export default function DocumentsPage() {
                 Download
               </a>
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </PageContainer>
+          </DialogFooter>        </DialogContent>      </Dialog>
+      </div>
+    </div>
   )
 }

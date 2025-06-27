@@ -3,5 +3,9 @@
 import { InvoiceDashboard } from "@/components/invoices/invoice-dashboard"
 
 export default function InvoicesPage() {
-  return <InvoiceDashboard />
+  return (
+    <div className="p-6">
+      <InvoiceDashboard />
+    </div>
+  )
 }

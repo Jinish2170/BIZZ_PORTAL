@@ -29,14 +29,6 @@ import { z } from "zod"
 import { DataTable } from "@/components/data-table"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import {
-  PageContainer,
-  PageHeader,
-  PageHeaderHeading,
-  PageHeaderDescription,
-  PageActions,
-  PageContent,
-} from "@/components/layout/page-container"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -278,18 +270,18 @@ export default function SuppliersPage() {
     (acc, supplier) => {
       acc[supplier.category] = (acc[supplier.category] || 0) + 1
       return acc
-    },
-    {} as Record<string, number>,
+    },    {} as Record<string, number>,
   )
 
   return (
-    <PageContainer>
-      <PageHeader>
-        <div>
-          <PageHeaderHeading>Suppliers</PageHeaderHeading>
-          <PageHeaderDescription>Manage your suppliers and their information</PageHeaderDescription>
-        </div>
-        <PageActions>
+    <div className="p-6">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Suppliers</h1>
+            <p className="text-muted-foreground">Manage your suppliers and their information</p>
+          </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -347,8 +339,7 @@ export default function SuppliersPage() {
                   onChange={(name, value) => setFormData((prev) => ({ ...prev, [name]: value }))}
                   selectOptions={[
                     { value: "active", label: "Active" },
-                    { value: "inactive", label: "Inactive" },
-                  ]}
+                    { value: "inactive", label: "Inactive" },                  ]}
                   required
                 />
               </div>
@@ -360,10 +351,10 @@ export default function SuppliersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </PageActions>
-      </PageHeader>
+        </div>
+      </div>
 
-      <PageContent>
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
@@ -443,13 +434,12 @@ export default function SuppliersPage() {
                 <DataTable
                   columns={columns}
                   data={suppliers.filter((s) => s.status === "inactive")}
-                  searchPlaceholder="Search inactive suppliers..."
-                />
+                  searchPlaceholder="Search inactive suppliers..."                />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </PageContent>
+      </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
@@ -507,9 +497,9 @@ export default function SuppliersPage() {
               Cancel
             </Button>
             <Button onClick={handleEditSupplier}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
+          </DialogFooter>        </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

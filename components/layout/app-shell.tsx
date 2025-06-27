@@ -25,10 +25,9 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <AppSidebar />
-        <SidebarInset className="flex flex-1 flex-col">
+        <AppSidebar />        <SidebarInset className="flex flex-1 flex-col">
           <AppHeader />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <main className="flex-1 overflow-auto">{children}</main>
           <div className="border-t py-3 px-6 text-center text-xs text-muted-foreground">
             <p>© 2025 BizzPortal. All rights reserved.</p>
           </div>

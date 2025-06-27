@@ -74,3 +74,25 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Calendar popover responsive styles */
+  .calendar-popover {
+    @apply w-80 sm:w-96 max-w-[calc(100vw-1rem)];
+  }
+
+  @media (max-width: 640px) {
+    .calendar-popover .calendar-compact {
+      font-size: 0.75rem;
+    }
+
+    .calendar-popover .calendar-compact .day {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .calendar-popover .calendar-compact .head_cell {
+      width: 1.5rem;
+    }
+  }
+}

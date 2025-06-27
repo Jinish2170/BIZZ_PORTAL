@@ -339,15 +339,15 @@ export default function AnalyticsPage() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
   }
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-            <p className="text-muted-foreground mt-1">Visualize and analyze your business performance</p>
-          </div>
+    <div className="p-6">
+      <div className="space-y-8">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+              <p className="text-muted-foreground mt-1">Visualize and analyze your business performance</p>
+            </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Time Period:</span>
             <Select value={timeFilter} onValueChange={setTimeFilter}>
@@ -651,9 +651,9 @@ export default function AnalyticsPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
-        </TabsContent>
+          </motion.div>        </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 }
