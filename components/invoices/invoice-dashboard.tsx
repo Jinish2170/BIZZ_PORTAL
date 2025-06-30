@@ -359,50 +359,69 @@ export function InvoiceDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="p-4 bg-primary rounded-lg shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-white">
-              <div className="text-sm">Total Invoiced</div>
-              <div className="text-lg font-bold">
-                ${totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Invoiced</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ${totalInvoiced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-2 bg-blue-500/10 rounded-full">
+                <DollarSign className="h-6 w-6 text-blue-500" />
               </div>
             </div>
-            <DollarSign className="h-8 w-8 text-white opacity-75" />
-          </div>
-        </div>
-        <div className="p-4 bg-success rounded-lg shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-white">
-              <div className="text-sm">Total Paid</div>
-              <div className="text-lg font-bold">
-                ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Paid</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-2 bg-green-500/10 rounded-full">
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
               </div>
             </div>
-            <CheckCircle2 className="h-8 w-8 text-white opacity-75" />
-          </div>
-        </div>
-        <div className="p-4 bg-warning rounded-lg shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-white">
-              <div className="text-sm">Pending Payment</div>
-              <div className="text-lg font-bold">
-                ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pending Payment</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-2 bg-yellow-500/10 rounded-full">
+                <Clock className="h-6 w-6 text-yellow-500" />
               </div>
             </div>
-            <Clock className="h-8 w-8 text-white opacity-75" />
-          </div>
-        </div>
-        <div className="p-4 bg-destructive rounded-lg shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-white">
-              <div className="text-sm">Overdue</div>
-              <div className="text-lg font-bold">
-                ${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Overdue</p>
+                <p className="text-2xl font-bold text-foreground">
+                  ${totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="p-2 bg-red-500/10 rounded-full">
+                <AlertCircle className="h-6 w-6 text-red-500" />
               </div>
             </div>
-            <AlertCircle className="h-8 w-8 text-white opacity-75" />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       <DataTable columns={columns} data={filteredInvoices} searchPlaceholder="Search invoices..." />
