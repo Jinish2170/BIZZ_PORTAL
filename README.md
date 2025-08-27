@@ -2,8 +2,6 @@
 
 A comprehensive, modern business management platform built with Next.js 15, React 19, and TypeScript. BizzPortal streamlines your business operations with powerful tools for managing invoices, suppliers, budgets, documents, and analytics.
 
-![BizzPortal Dashboard](./public/dashboard-preview.png)
-
 ## ✨ Features
 
 ### 📊 **Dashboard & Analytics**
